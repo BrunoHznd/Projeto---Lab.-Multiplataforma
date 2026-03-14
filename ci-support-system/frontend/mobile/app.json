@@ -1,0 +1,26 @@
+{
+    "expo": {
+        "name": "tiResolve",
+        "slug": "ci-support-mobile",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "userInterfaceStyle": "automatic",
+        "splash": {
+            "backgroundColor": "#1a1a2e"
+        },
+        "assetBundlePatterns": [
+            "**/*"
+        ],
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "br.edu.fatecpg.cisupport"
+        },
+        "android": {
+            "adaptiveIcon": {
+                "backgroundColor": "#1a1a2e"
+            },
+            "package": "br.edu.fatecpg.cisupport"
+        },
+        "platforms": ["ios", "android"]
+    }
+}
