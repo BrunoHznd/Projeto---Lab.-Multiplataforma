@@ -1,0 +1,6 @@
+{
+    "machine_id": "lab_pc_01",
+    "api_url": "http://localhost:8000/monitoramento",
+    "intervalo_segundos": 300,
+    "ping_host": "8.8.8.8"
+}

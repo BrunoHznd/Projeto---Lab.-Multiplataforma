@@ -1,0 +1,164 @@
+5.2 Design de Interface (UI/UX)
+ 
+ Aqui o foco é mostrar como os usuários vão interagir com o sistema, tanto visualmente quanto funcionalmente. O objetivo é garantir uma navegação intuitiva, agradável e consistente em todas as plataformas.
+ 
+ Experiência do Usuário (UX):
+ 
+ - Fluxos de navegação principais:
+   - Autenticação:
+     - Login → Redirecionamento para a área principal conforme permissão.
+   - Abertura e acompanhamento de chamados (usuário):
+     - Lista de chamados → Criar chamado → Detalhe do chamado → Chat/Mensagens → Acompanhamento do status.
+   - Operação de chamados (técnico/admin):
+     - Lista de chamados → Detalhe → Atribuição de técnico (admin) → Chat/Mensagens → Finalização com relatório (técnico).
+   - Infraestrutura/Inventário (admin/técnico):
+     - Listas → Detalhe → Criação/Edição/Remoção conforme permissões.
+ - Acessibilidade e facilidade de uso:
+   - Componentes com áreas clicáveis adequadas (principalmente no mobile).
+   - Contraste e hierarquia visual (título, status, prioridade, ações).
+   - Feedback imediato para estados importantes:
+     - Carregando, vazio/sem dados, sucesso/erro, sessão expirada.
+ - Responsividade e adaptação a diferentes tamanhos de tela:
+   - Web com layout adaptável (desktop/tablet/mobile) e navegação consistente.
+   - Mobile com componentes nativos e fluxo otimizado para toque.
+   - Desktop mantendo o mesmo fluxo de telas, com melhor uso de espaço em resoluções maiores.
+ 
+ Interface Gráfica (UI):
+ 
+ - Aspectos visuais:
+   - Paleta de cores com foco em legibilidade e consistência entre plataformas.
+   - Uso de ícones e rótulos claros para navegação (ex.: Dashboard, Chamados, Usuários, Infraestrutura, Inventário).
+   - Botões e estados (normal, hover, desabilitado) padronizados.
+ - Guia de estilos (Design System):
+   - Componentes reutilizáveis:
+     - Botão, input, select, modal, cards, badges de status e prioridade.
+   - Tipografia padronizada (títulos, subtítulos, corpo).
+   - Tokens de design (cores, espaçamentos, bordas, sombras) reutilizados para manter consistência.
+ - Layouts:
+   - Abordagem mobile-first nas telas que exigem uso em celular.
+   - Grid e espaçamentos consistentes para listagens (chamados, máquinas, inventário).
+ 
+ 
+6.1 Estratégia de Implementação
+
+Front-End: Como o front-end será desenvolvido para ser responsivo em várias plataformas.
+
+- O projeto utiliza uma abordagem multiplataforma com três clientes:
+  - Web: React (frontend/web)
+  - Mobile: React Native + Expo (frontend/mobile)
+  - Desktop: Electron + React (frontend/desktop)
+- Estratégia de responsividade:
+  - Web:
+    - Layout responsivo com CSS e componentes que se adaptam a diferentes larguras (desktop/tablet/mobile).
+  - Mobile:
+    - Uso de componentes e padrões do React Native para adaptação automática a tamanhos de tela.
+    - Persistência de sessão via AsyncStorage.
+  - Desktop:
+    - Baseado em Electron + React com as mesmas chamadas de API via Axios.
+
+Back-End: Desenvolvimento do servidor, integração com a API e comunicação com o banco de dados.
+
+- Servidor:
+  - Backend implementado em FastAPI, com roteadores separados por domínio:
+    - auth, chamados, monitoramento, inventario, upload, notificacoes, logs.
+  - CORS configurado via CORSMiddleware para permitir acesso dos diferentes clientes.
+- Autenticação e autorização:
+  - JWT gerado em auth_service (bcrypt).
+  - Dependências de autenticação/roles em utils/dependencies.py:
+    - get_current_user (valida token e carrega usuário do banco)
+    - require_admin
+    - require_tecnico_or_admin
+  - Regras por perfil aplicadas nos endpoints (ex.: somente USUARIO cria chamado; somente ADMIN atribui técnico; somente TECNICO finaliza).
+- Banco de dados:
+  - PostgreSQL como banco principal do sistema.
+  - Modelos principais (backend/app/models): Organizacao, User, Chamado, LogChamado, Maquina, InventarioItem, Notificacao.
+  - Multi-tenancy:
+    - A maioria das consultas de listagem filtra por organizacao_id (ex.: listar_chamados, listar_maquinas, inventário).
+    - Agents vinculam organização via codigo_organizacao (monitoramento_service.processar_dados_monitoramento).
+- Integração API ↔ banco:
+  - Routers chamam services (camada de regras) e fazem commits/refrescos no DB conforme necessário.
+  - Schemas Pydantic (backend/app/schemas) padronizam requests/responses e evitam vazamento de detalhes internos.
+
+Integração Contínua: Estratégia para testes automatizados, deploy contínuo e controle de versão.
+
+- Controle de versão:
+  - Repositório do GitHub:https://github.com/BrunoHznd/Projeto---Lab.-Multiplataforma
+  - Estratégia Utilizada:
+    - Branch principal (main) protegida.
+    - Feature branches (feature/*) para novas funcionalidades.
+- Testes automatizados:
+  - Backend:
+    - pytest para testes unitários e de integração.
+    - TestClient do FastAPI para testar endpoints.
+  - Frontend (Web/Desktop):
+    - Jest + React Testing Library para componentes e fluxos.
+    - Mock do Axios para testes de services.
+  - Mobile:
+    - Jest para lógica e componentes.
+    - (Opcional) testes end-to-end com Detox se o escopo exigir.
+- Pipeline CI (ex.: GitHub Actions/GitLab CI):
+  - Etapas recomendadas:
+    - Lint/format (Python: ruff/flake8; JS: eslint/prettier) 
+    - Unit tests (backend + frontend)
+    - Integração (subir backend em modo teste e rodar suite de integração)
+    - Build (web/desktop) e validação (mobile)
+- Deploy contínuo:
+  - Backend:
+    - Build de imagem Docker e deploy em VPS.
+    - Migrações/bootstrapping do banco antes de subir a aplicação (ex.: migrate.py e/ou migrações versionadas).
+  - Web:
+    - Build estático e deploy em serviço de hosting.
+  - Desktop:
+    - Pipeline de build de instaladores (electron-builder) em releases versionadas.
+  - Mobile:
+    - EAS Build/Submit (Expo) para publicar versões.
+
+
+6.2 Testes
+
+Testes Unitários: Testes de funções individuais no back-end e front-end.
+
+- Back-end (pytest):
+  - auth_service:
+    - hash_senha/verificar_senha (senha válida e inválida)
+    - criar_token_acesso/verificar_token (token válido, expirado, adulterado)
+  - chamado_service:
+    - listar_chamados com diferentes roles (ADMIN/TECNICO/USUARIO) e filtros de status
+    - finalizar_chamado validando: status correto, técnico atribuído, resolucao obrigatória
+  - monitoramento_service:
+    - processar_dados_monitoramento criando/atualizando máquina
+    - regra de “auto-criar inventário” somente para HARDWARE
+- Front-end:
+  - services/api.js:
+    - Interceptor injeta Authorization quando token existe.
+    - Interceptor limpa storage em 401.
+  - Componentes:
+    - Rotas protegidas (PrivateRoute) redireciona quando não autenticado.
+    - Renderização condicional por role.
+
+Testes de Integração: Garantir que a integração entre as camadas (front-end, back-end, API e banco) está funcionando corretamente.
+
+- Backend (FastAPI TestClient):
+  - Fluxos principais:
+    - Criar organização → receber token → criar usuário → login.
+    - USUARIO cria chamado → ADMIN atribui técnico → TECNICO finaliza → mensagens no chat.
+    - CRUD de inventário com permissões (ADMIN/TECNICO vs USUARIO).
+    - Monitoramento: agent envia dados → máquina aparece em /maquinas → histórico de chamados da máquina.
+  - Validação de multi-tenancy:
+    - Garantir que listagens e detalhes respeitam organizacao_id e permissões.
+- Frontend + Backend (ambiente de teste):
+  - Subir backend em porta local e executar testes que validam:
+    - login real
+    - criação/listagem de chamados
+    - upload (se aplicável)
+
+Testes de Performance: Testar o desempenho do sistema em diferentes cenários de carga.
+
+- Metas e cenários:
+  - Listagem de chamados com paginação (ex.: 1k, 10k registros por organização).
+  - Chat: sequência de envio de mensagens (ex.: 50-200 mensagens por chamado).
+  - Monitoramento: múltiplos agents postando em /monitoramento (ex.: 50, 200, 500 máquinas).
+- Métricas:
+  - Taxa de erro.
+  - Uso de CPU/memória do backend.
+  - Tempo de resposta do banco.

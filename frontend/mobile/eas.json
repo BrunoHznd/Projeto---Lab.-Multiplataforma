@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 18.7.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "latest",
+        "prebuildCommand": "echo 'Skipping prebuild - using local android/'"
+      },
+      "env": {
+        "EAS_NO_VCS": "1",
+        "TIRESOLVE_API_URL": "http://67.211.211.231/api"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

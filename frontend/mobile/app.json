@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "tiResolve",
+    "slug": "ci-support-mobile",
+    "version": "1.0.0",
+    "sdkVersion": "53.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#1a1a2e"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.edu.fatecpg.cisupport",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a1a2e"
+      },
+      "usesCleartextTraffic": true,
+      "package": "br.edu.fatecpg.cisupport",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            { "scheme": "tiresolve" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "extra": {
+      "apiUrl": "http://67.211.211.231/api",
+      "eas": {
+        "projectId": "0faaa0c0-eb25-4838-a26a-eff5c9392164"
+      }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permitir que o tiResolve acesse a câmera para anexar fotos aos chamados.",
+          "photosPermission": "Permitir que o tiResolve acesse a galeria para anexar fotos aos chamados."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6C63FF",
+          "defaultChannel": "tiresolve-tickets"
+        }
+      ],
+      "expo-task-manager"
+    ]
+  }
+}

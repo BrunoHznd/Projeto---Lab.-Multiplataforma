@@ -1,0 +1,58 @@
+{
+    "name": "tiresolve-desktop",
+    "version": "1.0.0",
+    "private": true,
+    "main": "electron/main.js",
+    "homepage": "./",
+    "scripts": {
+        "start": "react-scripts start",
+        "build": "react-scripts build",
+        "electron:dev": "concurrently \"cross-env BROWSER=none react-scripts start\" \"wait-on http://localhost:3000 && electron .\"",
+        "electron:build": "react-scripts build && electron-builder",
+        "electron:pack": "electron-builder --dir"
+    },
+    "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-scripts": "5.0.1",
+        "react-router-dom": "^6.21.1",
+        "axios": "^1.6.2",
+        "recharts": "^2.10.3"
+    },
+    "devDependencies": {
+        "electron": "^28.1.0",
+        "electron-builder": "^24.9.1",
+        "concurrently": "^8.2.2",
+        "cross-env": "^7.0.3",
+        "wait-on": "^7.2.0"
+    },
+    "build": {
+        "appId": "br.edu.fatecpg.tiresolve.desktop",
+        "productName": "tiResolve Desktop",
+        "files": [
+            "build/**/*",
+            "electron/**/*"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "public/icon.ico"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "installerLanguages": [
+                "pt_BR"
+            ]
+        }
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version"
+        ]
+    }
+}
