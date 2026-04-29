@@ -30,7 +30,7 @@ export default function LoginPage() {
     return (
         <div className="login-page">
             <div className="login-card animate-in">
-                <div className="login-icon">🔧</div>
+                <div className="login-icon"><i className="fa-solid fa-wrench"></i></div>
                 <h1 className="login-title">tiResolve</h1>
                 <p className="login-subtitle">Painel Técnico - Centro de Informática</p>
                 <form onSubmit={handleSubmit}>
@@ -42,9 +42,9 @@ export default function LoginPage() {
                         <label className="form-label">Senha</label>
                         <input type="password" className="form-input" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} required />
                     </div>
-                    {erro && <div style={{ background: 'rgba(255,107,107,0.1)', color: '#FF6B6B', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '14px' }}>⚠️ {erro}</div>}
+                    {erro && <div style={{ background: 'rgba(255,107,107,0.1)', color: '#FF6B6B', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '14px' }}><i className="fa-solid fa-triangle-exclamation"></i> {erro}</div>}
                     <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }} disabled={carregando}>
-                        {carregando ? '⏳ Entrando...' : '🔐 Entrar'}
+                        {carregando ? 'Entrando...' : <><i className="fa-solid fa-right-to-bracket"></i> Entrar</>}
                     </button>
                 </form>
             </div>

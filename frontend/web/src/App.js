@@ -33,11 +33,11 @@ function PrivateRoute({ children, allowedRoles }) {
  */
 function getLinksForRole(role) {
     const allLinks = [
-        { to: '/dashboard', icon: '📊', label: 'Dashboard', roles: ['ADMIN', 'TECNICO'] },
-        { to: '/chamados', icon: '📋', label: 'Chamados', roles: ['ADMIN', 'TECNICO', 'USUARIO'] },
-        { to: '/usuarios', icon: '👥', label: 'Usuarios', roles: ['ADMIN'] },
-        { to: '/maquinas', icon: '🏗️', label: 'Infraestrutura', roles: ['ADMIN', 'TECNICO'] },
-        { to: '/inventario', icon: '📦', label: 'Inventario', roles: ['ADMIN', 'TECNICO'] },
+        { to: '/dashboard', icon: 'fa-chart-bar', label: 'Dashboard', roles: ['ADMIN', 'TECNICO'] },
+        { to: '/chamados', icon: 'fa-ticket', label: 'Chamados', roles: ['ADMIN', 'TECNICO', 'USUARIO'] },
+        { to: '/usuarios', icon: 'fa-users', label: 'Usuarios', roles: ['ADMIN'] },
+        { to: '/maquinas', icon: 'fa-network-wired', label: 'Infraestrutura', roles: ['ADMIN', 'TECNICO'] },
+        { to: '/inventario', icon: 'fa-box', label: 'Inventario', roles: ['ADMIN', 'TECNICO'] },
     ];
     return allLinks.filter(link => link.roles.includes(role));
 }
@@ -108,7 +108,7 @@ function Layout({ children }) {
         <div className="app-layout" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
             {/* Header Mobile Oculto no PC */}
             <div className="mobile-header">
-                <button className="mobile-menu-btn" onClick={() => setMenuAberta(true)}>☰</button>
+                <button className="mobile-menu-btn" onClick={() => setMenuAberta(true)}><i className="fa-solid fa-bars"></i></button>
                 <div style={{ marginLeft: 12, fontWeight: 700, color: 'var(--cor-primaria)', fontSize: 18 }}>tiResolve</div>
             </div>
 
@@ -125,7 +125,7 @@ function Layout({ children }) {
                             style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
                         />
                     ) : (
-                        <span className="sidebar-logo-icon">🖥️</span>
+                        <span className="sidebar-logo-icon"><i className="fa-solid fa-desktop"></i></span>
                     )}
                     <h2>tiResolve<span>{org?.nome || 'Centro de Informatica'}</span>{org?.codigo_acesso && <span style={{ fontSize: 10, letterSpacing: 2, opacity: 0.5 }}>ID: {org.codigo_acesso}</span>}</h2>
                 </div>
@@ -138,7 +138,7 @@ function Layout({ children }) {
                             onClick={() => setMenuAberta(false)}
                             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                         >
-                            <span className="sidebar-link-icon">{link.icon}</span>
+                            <span className="sidebar-link-icon"><i className={`fa-solid ${link.icon}`}></i></span>
                             {link.label}
                         </NavLink>
                     ))}
@@ -153,7 +153,7 @@ function Layout({ children }) {
                         <div className="sidebar-user-role">{getRoleLabel(user?.role)}</div>
                     </div>
                     <button className="sidebar-logout" onClick={handleLogout} title="Sair">
-                        🚪
+                        <i className="fa-solid fa-right-from-bracket"></i>
                     </button>
                 </div>
             </aside>

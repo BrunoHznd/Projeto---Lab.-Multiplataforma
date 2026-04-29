@@ -80,7 +80,7 @@ export default function LoginPage() {
     return (
         <div className="login-page">
             <div className="login-card" style={{ maxWidth: modo === 'login' ? 420 : 460 }}>
-                <div className="login-icon">🖥️</div>
+                <div className="login-icon"><i className="fa-solid fa-desktop"></i></div>
                 <h1 className="login-title">tiResolve</h1>
                 <p className="login-subtitle">
                     {modo === 'login' && 'Acesse sua conta'}
@@ -183,13 +183,13 @@ export default function LoginPage() {
                                 onClick={() => { setModo('cadastro_id'); setErro(''); }}
                                 style={{ background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.2)', borderRadius: 10, color: 'var(--cor-primaria)', cursor: 'pointer', padding: '10px', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}
                             >
-                                🔑 Cadastrar com ID da Organizacao
+                                <i className="fa-solid fa-key"></i> Cadastrar com ID da Organizacao
                             </button>
                             <button
                                 onClick={() => { setModo('nova_org'); setErro(''); }}
                                 style={{ background: 'rgba(107,203,119,0.1)', border: '1px solid rgba(107,203,119,0.2)', borderRadius: 10, color: '#6BCB77', cursor: 'pointer', padding: '10px', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}
                             >
-                                🏢 Sou Novo Na Plataforma
+                                <i className="fa-solid fa-building"></i> Sou Novo Na Plataforma
                             </button>
                         </>
                     )}

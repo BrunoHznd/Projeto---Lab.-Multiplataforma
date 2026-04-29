@@ -201,4 +201,7 @@ export const alterarSenha = (senhaAtual, novaSenha) =>
 export const statsUsuario = (userId) =>
     api.get(`/auth/users/${userId}/stats`).then(r => r.data);
 
+export const excluirUsuario = (userId) =>
+    api.delete(`/auth/users/${userId}`);
+
 export default api;

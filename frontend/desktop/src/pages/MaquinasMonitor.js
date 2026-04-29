@@ -41,36 +41,36 @@ export default function MaquinasMonitor() {
         <div className="animate-in">
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title">🖥️ Monitoramento de Máquinas</h1>
+                    <h1 className="page-title"><i className="fa-solid fa-desktop"></i> Monitoramento de Máquinas</h1>
                     <p className="page-subtitle">Status em tempo real da infraestrutura de rede</p>
                 </div>
-                <button className="btn btn-primary" onClick={carregar}>🔄 Atualizar</button>
+                <button className="btn btn-primary" onClick={carregar}><i className="fa-solid fa-rotate"></i> Atualizar</button>
             </div>
 
             {/* Stats */}
             <div className="stats-grid">
                 <div className="stat-card" style={{ '--cor-indicador': '#6C63FF' }}>
-                    <span className="stat-icon">🖥️</span>
+                    <span className="stat-icon"><i className="fa-solid fa-desktop"></i></span>
                     <div className="stat-value">{maquinas.length}</div>
                     <div className="stat-label">Total</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#6BCB77' }}>
-                    <span className="stat-icon">🟢</span>
+                    <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i></span>
                     <div className="stat-value">{online}</div>
                     <div className="stat-label">Online</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#FF6B6B' }}>
-                    <span className="stat-icon">🔴</span>
+                    <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i></span>
                     <div className="stat-value">{offline}</div>
                     <div className="stat-label">Offline</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#4FC3F7' }}>
-                    <span className="stat-icon">💻</span>
+                    <span className="stat-icon"><i className="fa-solid fa-microchip"></i></span>
                     <div className="stat-value">{cpuMedia}%</div>
                     <div className="stat-label">CPU Média</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#FFD93D' }}>
-                    <span className="stat-icon">🧠</span>
+                    <span className="stat-icon"><i className="fa-solid fa-memory"></i></span>
                     <div className="stat-value">{memMedia}%</div>
                     <div className="stat-label">RAM Média</div>
                 </div>
@@ -80,7 +80,7 @@ export default function MaquinasMonitor() {
             {dadosGrafico.length > 0 && (
                 <div className="charts-grid">
                     <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
-                        <h3 className="chart-title">📊 CPU e Memória por Máquina</h3>
+                        <h3 className="chart-title"><i className="fa-solid fa-chart-bar"></i> CPU e Memória por Máquina</h3>
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={dadosGrafico}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
@@ -98,7 +98,7 @@ export default function MaquinasMonitor() {
             {/* Tabela */}
             <div className="table-container">
                 <div className="table-header">
-                    <h3 className="table-title">📋 Lista de Máquinas</h3>
+                    <h3 className="table-title"><i className="fa-solid fa-list"></i> Lista de Máquinas</h3>
                     <span style={{ fontSize: '12px', color: 'var(--cor-texto-sec)' }}>{maquinas.length} máquinas</span>
                 </div>
                 <table>
@@ -119,7 +119,7 @@ export default function MaquinasMonitor() {
                                 <td style={{ fontWeight: 600 }}>{m.nome}</td>
                                 <td><code style={{ color: '#4FC3F7', background: 'rgba(79,195,247,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{m.ip || '-'}</code></td>
                                 <td>{m.localizacao || '-'}</td>
-                                <td><span className={`badge badge-${m.ultimo_status.toLowerCase()}`}>{m.ultimo_status === 'ONLINE' ? '🟢' : '🔴'} {m.ultimo_status}</span></td>
+                                <td><span className={`badge badge-${m.ultimo_status.toLowerCase()}`}>{m.ultimo_status === 'ONLINE' ? <i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i> : <i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i>} {m.ultimo_status}</span></td>
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '50px', height: '5px', borderRadius: '3px', background: 'var(--cor-borda)', overflow: 'hidden' }}>
@@ -142,7 +142,7 @@ export default function MaquinasMonitor() {
                         {maquinas.length === 0 && (
                             <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                                 <div className="empty-state">
-                                    <div className="empty-icon">🖥️</div>
+                                    <div className="empty-icon"><i className="fa-solid fa-desktop"></i></div>
                                     <p className="empty-text">Nenhuma máquina sendo monitorada.<br /><small>Execute o agent Python nas máquinas.</small></p>
                                 </div>
                             </td></tr>

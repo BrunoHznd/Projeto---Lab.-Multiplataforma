@@ -10,6 +10,7 @@ import {
     Platform, ScrollView
 } from 'react-native';
 import { login, testarConexao, API_URL } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
     const [email, setEmail] = useState('');
@@ -63,7 +64,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             <ScrollView contentContainerStyle={styles.scroll}>
                 {/* Cabeçalho */}
                 <View style={styles.header}>
-                    <Text style={styles.emoji}>🖥️</Text>
+                    <FontAwesome5 name="desktop" size={60} color="#6C63FF" style={{ marginBottom: 10 }} />
                     <Text style={styles.titulo}>tiResolve</Text>
                     <Text style={styles.subtitulo}>Centro de Informática</Text>
                     <Text style={styles.descricao}>FATEC Praia Grande</Text>
@@ -134,10 +135,6 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
-    },
-    emoji: {
-        fontSize: 60,
-        marginBottom: 10,
     },
     titulo: {
         fontSize: 32,

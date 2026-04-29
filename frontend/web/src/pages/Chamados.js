@@ -11,8 +11,14 @@ import {
     listarChamados, criarChamado, deletarChamado,
     listarTecnicos, atribuirTecnico, finalizarChamado,
     uploadImagem, getUser, listarMaquinas, historicoChamadosMaquina, API_URL,
-    listarMensagens, enviarMensagem, editarChamadoUsuario
+    listarMensagens, enviarMensagem, editarChamadoUsuario, atualizarChamado
 } from '../services/api';
+
+const CATEGORIA_COLOR = {
+    HARDWARE: '#FF6B6B', EMAIL: '#4FC3F7', IMPRESSORA: '#FFD93D',
+    SERVIDOR: '#A78BFA', SOFTWARE: '#6C63FF', REDES: '#26C6DA',
+    ACESSO: '#FF8A65', SEGURANCA: '#EF5350', OUTROS: '#9E9E9E'
+};
 
 export default function ChamadosPage() {
     const [chamados, setChamados] = useState([]);
@@ -20,7 +26,7 @@ export default function ChamadosPage() {
     const [filtro, setFiltro] = useState('');
     const [modal, setModal] = useState(null);
     const [tecnicos, setTecnicos] = useState([]);
-    const [form, setForm] = useState({ titulo: '', descricao: '', prioridade: 'NENHUMA', maquina_id: '' });
+    const [form, setForm] = useState({ titulo: '', descricao: '', maquina_id: '' });
     const [maquinas, setMaquinas] = useState([]);
     const [imagemFile, setImagemFile] = useState(null);
     const [atribuirModal, setAtribuirModal] = useState(null);
@@ -90,7 +96,7 @@ export default function ChamadosPage() {
             }
             await criarChamado({ ...form, imagem_url: imagemUrl, maquina_id: form.maquina_id ? parseInt(form.maquina_id) : null });
             setModal(null);
-            setForm({ titulo: '', descricao: '', prioridade: 'NENHUMA', maquina_id: '' });
+            setForm({ titulo: '', descricao: '', maquina_id: '' });
             setImagemFile(null);
             carregar();
         } catch (err) {
@@ -197,6 +203,7 @@ export default function ChamadosPage() {
                             <th>ID</th>
                             <th>Titulo</th>
                             <th>Status</th>
+                            <th>Categoria</th>
                             <th>Prioridade</th>
                             <th>Solicitante</th>
                             <th>Tecnico</th>
@@ -213,11 +220,18 @@ export default function ChamadosPage() {
                                 <td>
                                     <span onClick={() => abrirDetalhes(c)} style={{ cursor: 'pointer' }} title="Ver detalhes">
                                         {c.titulo}
-                                        {c.imagem_url && <span style={{ marginLeft: 6 }}>📎</span>}
+                                        {c.imagem_url && <span style={{ marginLeft: 6 }}><i className="fa-solid fa-paperclip"></i></span>}
                                     </span>
                                 </td>
                                 <td>{getStatusBadge(c.status)}</td>
-                                <td><span className={`badge badge-${c.prioridade.toLowerCase()}`}>{c.prioridade === 'NENHUMA' ? '-' : c.prioridade}</span></td>
+                                <td>
+                                    <span style={{
+                                        background: (CATEGORIA_COLOR[c.categoria] || '#9E9E9E') + '22',
+                                        color: CATEGORIA_COLOR[c.categoria] || '#9E9E9E',
+                                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600
+                                    }}>{c.categoria || 'OUTROS'}</span>
+                                </td>
+                                <td><span className={`badge badge-${(c.prioridade || 'NENHUMA').toLowerCase()}`}>{c.prioridade === 'NENHUMA' ? '-' : c.prioridade}</span></td>
                                 <td>{c.usuario?.nome || '-'}</td>
                                 <td>{c.tecnico?.nome || <span style={{ color: '#666' }}>Nao atribuido</span>}</td>
                                 <td>{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
@@ -229,7 +243,7 @@ export default function ChamadosPage() {
                                             onClick={() => { setAtribuirModal(c); setTecnicoSelecionado(''); }}
                                             title="Atribuir Tecnico"
                                             style={{ background: 'rgba(108,99,255,0.15)', borderRadius: '6px', padding: '4px 8px' }}
-                                        >👤+</button>
+                                        ><i className="fa-solid fa-user-plus"></i></button>
                                     )}
                                     {/* TECNICO: Finalizar (so se atribuido a ele e EM_ATENDIMENTO) */}
                                     {role === 'TECNICO' && c.status === 'EM_ATENDIMENTO' && c.tecnico_id === user.id && (
@@ -238,11 +252,11 @@ export default function ChamadosPage() {
                                             onClick={() => { setFinalizarModal(c); setResolucao(''); setResolucaoImagem(null); }}
                                             title="Finalizar Chamado"
                                             style={{ background: 'rgba(107,203,119,0.15)', borderRadius: '6px', padding: '4px 8px' }}
-                                        >✅</button>
+                                        ><i className="fa-solid fa-circle-check"></i></button>
                                     )}
                                     {/* ADMIN: Deletar */}
                                     {role === 'ADMIN' && (
-                                        <button className="btn-icon" onClick={() => handleDeletar(c.id)} title="Excluir">🗑️</button>
+                                        <button className="btn-icon" onClick={() => handleDeletar(c.id)} title="Excluir"><i className="fa-solid fa-trash"></i></button>
                                     )}
                                     {/* Ver detalhes completos (inclui resolucao) */}
                                     {c.status === 'FINALIZADO' && (
@@ -251,13 +265,13 @@ export default function ChamadosPage() {
                                             onClick={() => abrirDetalhes(c)}
                                             title="Ver Detalhes e Resolucao"
                                             style={{ background: 'rgba(79,195,247,0.15)', borderRadius: '6px', padding: '4px 8px' }}
-                                        >📄</button>
+                                        ><i className="fa-solid fa-file-lines"></i></button>
                                     )}
                                 </td>
                             </tr>
                         ))}
                         {chamados.length === 0 && (
-                            <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Nenhum chamado encontrado</td></tr>
+                            <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Nenhum chamado encontrado</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -295,12 +309,7 @@ export default function ChamadosPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Imagem (opcional)</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => setImagemFile(e.target.files[0])}
-                                    style={{ color: '#a0a0b0' }}
-                                />
+                                <input type="file" accept="image/*" onChange={(e) => setImagemFile(e.target.files[0])} style={{ color: '#a0a0b0' }} />
                                 {imagemFile && <p style={{ color: '#6BCB77', fontSize: 12, marginTop: 4 }}>Arquivo: {imagemFile.name}</p>}
                             </div>
                             <div className="modal-actions">
@@ -389,9 +398,39 @@ export default function ChamadosPage() {
                 <div className="modal-overlay" onClick={() => setDetalheModal(null)}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
                         <h2 className="modal-title">Chamado #{detalheModal.id}</h2>
-                        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                             {getStatusBadge(detalheModal.status)}
-                            <span className={`badge badge-${detalheModal.prioridade.toLowerCase()}`}>{detalheModal.prioridade === 'NENHUMA' ? '-' : detalheModal.prioridade}</span>
+                            <span style={{
+                                background: (CATEGORIA_COLOR[detalheModal.categoria] || '#9E9E9E') + '22',
+                                color: CATEGORIA_COLOR[detalheModal.categoria] || '#9E9E9E',
+                                padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600
+                            }}><i className="fa-solid fa-file-lines"></i> {detalheModal.categoria || 'OUTROS'}</span>
+                            <span className={`badge badge-${(detalheModal.prioridade || 'NENHUMA').toLowerCase()}`}>{detalheModal.prioridade === 'NENHUMA' ? 'Sem prioridade' : detalheModal.prioridade}</span>
+                            {/* Selector de prioridade: ADMIN sempre, TECNICO so se atribuido */}
+                            {detalheModal.status !== 'FINALIZADO' && (
+                                role === 'ADMIN' || (role === 'TECNICO' && detalheModal.tecnico_id === user?.id)
+                            ) && (
+                                <select
+                                    className="form-select"
+                                    value={detalheModal.prioridade || 'NENHUMA'}
+                                    style={{ width: 150, padding: '4px 8px', fontSize: 12 }}
+                                    onChange={async (e) => {
+                                        try {
+                                            const upd = await atualizarChamado(detalheModal.id, { prioridade: e.target.value });
+                                            setDetalheModal({ ...detalheModal, prioridade: upd.prioridade });
+                                            carregar();
+                                        } catch (err) {
+                                            alert(err.response?.data?.detail || 'Erro ao alterar prioridade.');
+                                        }
+                                    }}
+                                >
+                                    <option value="NENHUMA">Sem prioridade</option>
+                                    <option value="BAIXA">Baixa</option>
+                                    <option value="MEDIA">Média</option>
+                                    <option value="ALTA">Alta</option>
+                                    <option value="CRITICA">Crítica</option>
+                                </select>
+                            )}
                         </div>
 
                         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
@@ -401,7 +440,7 @@ export default function ChamadosPage() {
 
                         {detalheModal.imagem_url && (
                             <div style={{ marginBottom: 16 }}>
-                                <label style={{ color: '#a0a0b0', fontSize: 12, display: 'block', marginBottom: 6 }}>📎 Imagem anexada:</label>
+                                <label style={{ color: '#a0a0b0', fontSize: 12, display: 'block', marginBottom: 6 }}><i className="fa-solid fa-paperclip"></i> Imagem anexada:</label>
                                 <img src={`${API_URL}${detalheModal.imagem_url}`} alt="Anexo" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, border: '1px solid #2a2a4a' }} />
                             </div>
                         )}
@@ -433,7 +472,7 @@ export default function ChamadosPage() {
                                             } catch { setEquipHistorico([]); }
                                         }}
                                     >
-                                        {maquinas.find(m => m.id === detalheModal.maquina_id)?.nome || 'Equipamento'} 🔍
+                                        {maquinas.find(m => m.id === detalheModal.maquina_id)?.nome || 'Equipamento'} <i className="fa-solid fa-magnifying-glass"></i>
                                     </p>
                                 ) : (
                                     <p style={{ color: '#fff', margin: '4px 0 0' }}>Nenhum</p>
@@ -444,7 +483,7 @@ export default function ChamadosPage() {
                         {/* Historico de chamados do equipamento */}
                         {equipHistorico !== null && (
                             <div style={{ background: 'rgba(79,195,247,0.06)', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid rgba(79,195,247,0.15)' }}>
-                                <h4 style={{ color: '#4FC3F7', margin: '0 0 10px', fontSize: 14 }}>📋 Chamados anteriores deste equipamento</h4>
+                                <h4 style={{ color: '#4FC3F7', margin: '0 0 10px', fontSize: 14 }}><i className="fa-solid fa-clipboard-list"></i> Chamados anteriores deste equipamento</h4>
                                 {equipHistorico.length === 0 ? (
                                     <p style={{ color: '#666', margin: 0, fontSize: 13 }}>Nenhum outro chamado associado.</p>
                                 ) : (
@@ -456,7 +495,7 @@ export default function ChamadosPage() {
                                                     {getStatusBadge(h.status)}
                                                 </div>
                                                 {h.resolucao && (
-                                                    <p style={{ color: '#6BCB77', fontSize: 12, margin: '4px 0 0' }}>✅ {h.resolucao}</p>
+                                                    <p style={{ color: '#6BCB77', fontSize: 12, margin: '4px 0 0' }}><i className="fa-solid fa-circle-check"></i> {h.resolucao}</p>
                                                 )}
                                                 {!h.resolucao && (
                                                     <p style={{ color: '#a0a0b0', fontSize: 12, margin: '4px 0 0' }}>Sem resolucao ainda</p>
@@ -476,7 +515,7 @@ export default function ChamadosPage() {
 
                         {detalheModal.resolucao && (
                             <div style={{ background: 'rgba(107,203,119,0.08)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                                <h4 style={{ color: '#6BCB77', margin: '0 0 8px', fontSize: 14 }}>✅ Resolucao</h4>
+                                <h4 style={{ color: '#6BCB77', margin: '0 0 8px', fontSize: 14 }}><i className="fa-solid fa-circle-check"></i> Resolucao</h4>
                                 <p style={{ color: '#c0c0d0', margin: 0, whiteSpace: 'pre-wrap' }}>{detalheModal.resolucao}</p>
                                 {detalheModal.resolucao_imagem_url && (
                                     <img src={`${API_URL}${detalheModal.resolucao_imagem_url}`} alt="Resolucao" style={{ maxWidth: '100%', maxHeight: 250, borderRadius: 8, marginTop: 12, border: '1px solid #2a2a4a' }} />
@@ -487,7 +526,7 @@ export default function ChamadosPage() {
                         {/* ADMIN: Atribuir tecnico direto no modal */}
                         {role === 'ADMIN' && detalheModal.status === 'ABERTO' && (
                             <div style={{ background: 'rgba(108,99,255,0.08)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                                <h4 style={{ color: '#6C63FF', margin: '0 0 10px', fontSize: 14 }}>👤 Atribuir Tecnico</h4>
+                                <h4 style={{ color: '#6C63FF', margin: '0 0 10px', fontSize: 14 }}><i className="fa-solid fa-user"></i> Atribuir Tecnico</h4>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     <select
                                         className="form-select"
@@ -524,7 +563,7 @@ export default function ChamadosPage() {
 
                         {/* ===== CHAT ===== */}
                         <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid rgba(108,99,255,0.1)' }}>
-                            <h4 style={{ color: '#6C63FF', margin: '0 0 12px', fontSize: 14 }}>💬 Chat</h4>
+                            <h4 style={{ color: '#6C63FF', margin: '0 0 12px', fontSize: 14 }}><i className="fa-solid fa-comments"></i> Chat</h4>
                             <div style={{ maxHeight: 200, overflowY: 'auto', marginBottom: 10 }}>
                                 {mensagens.length === 0 ? (
                                     <p style={{ color: '#666', fontSize: 12, textAlign: 'center', padding: 16 }}>Nenhuma mensagem ainda</p>
@@ -566,7 +605,7 @@ export default function ChamadosPage() {
                         {/* Edicao pelo usuario */}
                         {role === 'USUARIO' && detalheModal.usuario_id === user?.id && detalheModal.status !== 'FINALIZADO' && !editando && (
                             <button className="btn btn-sm" onClick={() => { setEditando(true); setEditForm({ titulo: detalheModal.titulo, descricao: detalheModal.descricao }); }}
-                                style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D', marginBottom: 12 }}>✏️ Editar Chamado</button>
+                                style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D', marginBottom: 12 }}><i className="fa-solid fa-pen"></i> Editar Chamado</button>
                         )}
                         {editando && (
                             <div style={{ background: 'rgba(255,217,61,0.06)', borderRadius: 10, padding: 16, marginBottom: 16 }}>

@@ -89,6 +89,9 @@ def migrate():
         ("maquinas", "grupo_id", "INTEGER REFERENCES grupos_maquinas(id)"),
         ("logs_chamado", "imagem_url", "VARCHAR(500)"),
         ("users", "push_token", "VARCHAR(255)"),
+        ("users", "habilidades", "TEXT"),  # JSON serializado
+        ("chamados", "categoria", "VARCHAR(20) DEFAULT 'OUTROS'"),
+        ("users", "max_tickets", "INTEGER DEFAULT 10"),
     ]
 
     for table, column, col_type in migrations:

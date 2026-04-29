@@ -5,11 +5,12 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const STATUS_CONFIG = {
-    ABERTO: { cor: '#FF6B6B', emoji: '🔴', label: 'Aberto' },
-    EM_ATENDIMENTO: { cor: '#FFD93D', emoji: '🟡', label: 'Em Atendimento' },
-    FINALIZADO: { cor: '#6BCB77', emoji: '🟢', label: 'Finalizado' },
+    ABERTO: { cor: '#FF6B6B', label: 'Aberto' },
+    EM_ATENDIMENTO: { cor: '#FFD93D', label: 'Em Atendimento' },
+    FINALIZADO: { cor: '#6BCB77', label: 'Finalizado' },
 };
 
 const PRIORIDADE_CONFIG = {
@@ -53,7 +54,7 @@ export default function ChamadoCard({ chamado, onPress }) {
                     <View style={styles.badges}>
                         <View style={[styles.badge, { backgroundColor: statusConfig.cor + '20' }]}>
                             <Text style={[styles.badgeTexto, { color: statusConfig.cor }]}>
-                                {statusConfig.emoji} {statusConfig.label}
+                                <FontAwesome5 name="circle" size={9} color={statusConfig.cor} solid /> {statusConfig.label}
                             </Text>
                         </View>
                         <View style={[styles.badge, { backgroundColor: prioridadeConfig.cor + '20' }]}>

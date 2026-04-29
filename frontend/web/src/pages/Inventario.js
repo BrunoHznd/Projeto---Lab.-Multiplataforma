@@ -100,7 +100,7 @@ export default function InventarioPage() {
     return (
         <div className="animate-in">
             <div className="page-header">
-                <h1 className="page-title">📦 Inventario</h1>
+                <h1 className="page-title"><i className="fa-solid fa-box"></i> Inventario</h1>
                 <p className="page-subtitle">Gestao de equipamentos e ativos da organizacao</p>
             </div>
 
@@ -127,7 +127,7 @@ export default function InventarioPage() {
                                     {item.foto_url ? (
                                         <img src={`${API_URL}${item.foto_url}`} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
                                     ) : (
-                                        <span style={{ fontSize: 24 }}>📦</span>
+                                        <span style={{ fontSize: 24 }}><i className="fa-solid fa-box"></i></span>
                                     )}
                                 </td>
                                 <td style={{ fontWeight: 600, cursor: 'pointer', color: '#6C63FF' }} onClick={() => setDetalheModal(item)}>{item.nome}</td>
@@ -135,10 +135,10 @@ export default function InventarioPage() {
                                 <td>
                                     {item.garantia ? (
                                         <span className="badge badge-finalizado">
-                                            ✅ {item.garantia_ate ? `Ate ${new Date(item.garantia_ate).toLocaleDateString('pt-BR')}` : 'Sim'}
+                                            <i className="fa-solid fa-circle-check"></i> {item.garantia_ate ? `Ate ${new Date(item.garantia_ate).toLocaleDateString('pt-BR')}` : 'Sim'}
                                         </span>
                                     ) : (
-                                        <span className="badge badge-aberto">❌ Nao</span>
+                                        <span className="badge badge-aberto"><i className="fa-solid fa-xmark"></i> Nao</span>
                                     )}
                                 </td>
                                 <td>
@@ -151,9 +151,9 @@ export default function InventarioPage() {
                                     ) : '-'}
                                 </td>
                                 <td>
-                                    <button className="btn-icon" onClick={() => abrirEditar(item)} title="Editar">✏️</button>
+                                    <button className="btn-icon" onClick={() => abrirEditar(item)} title="Editar"><i className="fa-solid fa-pen"></i></button>
                                     {role === 'ADMIN' && (
-                                        <button className="btn-icon" onClick={() => handleDeletar(item.id)} title="Remover">🗑️</button>
+                                        <button className="btn-icon" onClick={() => handleDeletar(item.id)} title="Remover"><i className="fa-solid fa-trash"></i></button>
                                     )}
                                 </td>
                             </tr>
@@ -169,7 +169,7 @@ export default function InventarioPage() {
             {modal && (
                 <div className="modal-overlay" onClick={() => setModal(null)}>
                     <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-                        <h2 className="modal-title">{modal === 'criar' ? '📦 Novo Item' : '✏️ Editar Item'}</h2>
+                        <h2 className="modal-title">{modal === 'criar' ? <><i className="fa-solid fa-box"></i> Novo Item</> : <><i className="fa-solid fa-pen"></i> Editar Item</>}</h2>
                         <form onSubmit={handleSalvar}>
                             <div className="form-group">
                                 <label className="form-label">Nome do Equipamento *</label>
@@ -232,7 +232,7 @@ export default function InventarioPage() {
             {detalheModal && (
                 <div className="modal-overlay" onClick={() => setDetalheModal(null)}>
                     <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
-                        <h2 className="modal-title">📦 {detalheModal.nome}</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-box"></i> {detalheModal.nome}</h2>
                         {detalheModal.foto_url && (
                             <img src={`${API_URL}${detalheModal.foto_url}`} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, marginBottom: 16 }} />
                         )}
@@ -265,7 +265,7 @@ export default function InventarioPage() {
                             </div>
                         </div>
                         <div className="modal-actions" style={{ marginTop: 16 }}>
-                            <button className="btn" onClick={() => { setDetalheModal(null); abrirEditar(detalheModal); }} style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D' }}>✏️ Editar</button>
+                            <button className="btn" onClick={() => { setDetalheModal(null); abrirEditar(detalheModal); }} style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D' }}><i className="fa-solid fa-pen"></i> Editar</button>
                             <button className="btn btn-primary" onClick={() => setDetalheModal(null)}>Fechar</button>
                         </div>
                     </div>

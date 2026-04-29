@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
     registrarUsuario, editarUsuario, alterarSenha,
-    statsUsuario, getUser, getOrg, API_URL
+    statsUsuario, excluirUsuario, getUser, getOrg, API_URL
 } from '../services/api';
 import api from '../services/api';
 
@@ -19,12 +19,42 @@ export default function UsuariosPage() {
     const [statsModal, setStatsModal] = useState(null);
     const [qrModal, setQrModal] = useState(false);
     const [senhaModal, setSenhaModal] = useState(false);
-    const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'USUARIO' });
-    const [editForm, setEditForm] = useState({ nome: '', role: '' });
+    const [deleteModal, setDeleteModal] = useState(null);
+    const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'USUARIO', habilidades: [], max_tickets: 10 });
+    const [editForm, setEditForm] = useState({ nome: '', role: '', habilidades: [], max_tickets: 10 });
+    const [filtroRoles, setFiltroRoles] = useState(['USUARIO', 'TECNICO', 'ADMIN']);
+
+    const HABILIDADES = [
+        { value: 'REDE', label: 'Rede' },
+        { value: 'HARDWARE', label: 'Hardware' },
+        { value: 'SOFTWARE', label: 'Software' },
+        { value: 'SEGURANCA', label: 'Segurança' },
+        { value: 'IMPRESSORA', label: 'Impressora' },
+        { value: 'ACESSOS', label: 'Acessos' },
+        { value: 'SERVIDOR', label: 'Servidor' },
+        { value: 'OUTROS', label: 'Outros' },
+    ];
+
+    const toggleHab = (formObj, setFormObj, hab) => {
+        const list = formObj.habilidades || [];
+        const novo = list.includes(hab) ? list.filter(h => h !== hab) : [...list, hab];
+        setFormObj({ ...formObj, habilidades: novo });
+    };
     const [senhaForm, setSenhaForm] = useState({ senha_atual: '', nova_senha: '', confirmar: '' });
+    const [showSenha, setShowSenha] = useState({ atual: false, nova: false, confirmar: false });
 
     const user = getUser();
     const org = getOrg();
+
+    const toggleFiltroRole = (role) => {
+        setFiltroRoles(prev =>
+            prev.includes(role)
+                ? prev.length > 1 ? prev.filter(r => r !== role) : prev
+                : [...prev, role]
+        );
+    };
+
+    const usuariosFiltrados = usuarios.filter(u => filtroRoles.includes(u.role));
 
     useEffect(() => { carregar(); }, []);
 
@@ -38,10 +68,17 @@ export default function UsuariosPage() {
 
     const handleCriar = async (e) => {
         e.preventDefault();
+        if (form.role === 'TECNICO' && (!form.habilidades || form.habilidades.length < 1)) {
+            alert('Tecnico deve ter pelo menos 1 habilidade.');
+            return;
+        }
         try {
-            await registrarUsuario(form);
+            const payload = { ...form };
+            if (payload.role !== 'TECNICO') { delete payload.habilidades; delete payload.max_tickets; }
+            else payload.max_tickets = parseInt(payload.max_tickets, 10) || 10;
+            await registrarUsuario(payload);
             setModal(false);
-            setForm({ nome: '', email: '', senha: '', role: 'USUARIO' });
+            setForm({ nome: '', email: '', senha: '', role: 'USUARIO', habilidades: [], max_tickets: 10 });
             carregar();
         } catch (err) {
             alert(err.response?.data?.detail || 'Erro ao criar usuario.');
@@ -50,12 +87,29 @@ export default function UsuariosPage() {
 
     const handleEditar = async (e) => {
         e.preventDefault();
+        if (editForm.role === 'TECNICO' && (!editForm.habilidades || editForm.habilidades.length < 1)) {
+            alert('Tecnico deve ter pelo menos 1 habilidade.');
+            return;
+        }
         try {
-            await editarUsuario(editModal.id, editForm);
+            const payload = { ...editForm };
+            if (payload.role !== 'TECNICO') { delete payload.habilidades; delete payload.max_tickets; }
+            else payload.max_tickets = parseInt(payload.max_tickets, 10) || 10;
+            await editarUsuario(editModal.id, payload);
             setEditModal(null);
             carregar();
         } catch (err) {
             alert(err.response?.data?.detail || 'Erro ao editar.');
+        }
+    };
+
+    const handleExcluir = async (userId) => {
+        try {
+            await excluirUsuario(userId);
+            setDeleteModal(null);
+            carregar();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Erro ao excluir usuario.');
         }
     };
 
@@ -93,19 +147,43 @@ export default function UsuariosPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn" onClick={() => setSenhaModal(true)} style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D' }}>
-                        🔒 Alterar Senha
+                        <i className="fa-solid fa-lock"></i> Alterar Senha
                     </button>
                     {user?.role === 'ADMIN' && (
                         <>
                             <button className="btn" onClick={() => setQrModal(true)} style={{ background: 'rgba(107,203,119,0.15)', color: '#6BCB77' }}>
-                                📱 Gerar QR Code
+                                <i className="fa-solid fa-qrcode"></i> Gerar QR Code
                             </button>
                             <button className="btn btn-primary" onClick={() => setModal(true)}>
-                                ➕ Novo Usuario
+                                <i className="fa-solid fa-plus"></i> Novo Usuario
                             </button>
                         </>
                     )}
                 </div>
+            </div>
+
+            {/* Filtro de Roles */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                {[{ value: 'USUARIO', label: 'Usuários', icon: 'fa-user', color: '#6C63FF' },
+                  { value: 'TECNICO', label: 'Técnicos', icon: 'fa-wrench', color: '#26C6DA' },
+                  { value: 'ADMIN', label: 'Admin', icon: 'fa-crown', color: '#FFD93D' }].map(r => {
+                    const ativo = filtroRoles.includes(r.value);
+                    return (
+                        <button key={r.value} type="button" onClick={() => toggleFiltroRole(r.value)}
+                            style={{
+                                padding: '7px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
+                                border: `1.5px solid ${ativo ? r.color : 'var(--cor-borda)'}`,
+                                background: ativo ? r.color + '22' : 'transparent',
+                                color: ativo ? r.color : 'var(--cor-texto-sec)',
+                                fontWeight: ativo ? 700 : 400, transition: 'all .15s'
+                            }}>
+                            {ativo ? <><i className="fa-solid fa-check"></i> </> : ''}{r.label}
+                        </button>
+                    );
+                })}
+                <span style={{ alignSelf: 'center', fontSize: 12, color: '#666', marginLeft: 4 }}>
+                    {usuariosFiltrados.length} usuário{usuariosFiltrados.length !== 1 ? 's' : ''}
+                </span>
             </div>
 
             {/* Tabela */}
@@ -117,12 +195,13 @@ export default function UsuariosPage() {
                             <th>Nome</th>
                             <th>Email</th>
                             <th>Papel</th>
+                            <th>Limite Tickets</th>
                             <th>Data de Cadastro</th>
                             <th>Acoes</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {usuarios.map(u => (
+                        {usuariosFiltrados.map(u => (
                             <tr key={u.id}>
                                 <td>#{u.id}</td>
                                 <td>{u.nome}</td>
@@ -130,19 +209,29 @@ export default function UsuariosPage() {
                                 <td>
                                     <span className={`badge badge-${u.role.toLowerCase()}`}>{u.role}</span>
                                 </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    {u.role === 'TECNICO'
+                                        ? <span style={{ background: 'rgba(108,99,255,0.15)', color: '#6C63FF', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>{u.max_tickets ?? 10}</span>
+                                        : <span style={{ color: '#555' }}>—</span>}
+                                </td>
                                 <td>{new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
                                 <td>
                                     {u.role === 'USUARIO' && (
-                                        <button className="btn-icon" onClick={() => abrirStats(u)} title="Ver tickets">📊</button>
+                                        <button className="btn-icon" onClick={() => abrirStats(u)} title="Ver tickets"><i className="fa-solid fa-chart-bar"></i></button>
                                     )}
                                     {user?.role === 'ADMIN' && (
-                                        <button className="btn-icon" onClick={() => { setEditModal(u); setEditForm({ nome: u.nome, role: u.role }); }} title="Editar">✏️</button>
+                                        <>
+                                            <button className="btn-icon" onClick={() => { setEditModal(u); setEditForm({ nome: u.nome, role: u.role, habilidades: u.habilidades || [], max_tickets: u.max_tickets ?? 10 }); }} title="Editar"><i className="fa-solid fa-pen"></i></button>
+                                            {user?.id !== u.id && (
+                                                <button className="btn-icon" onClick={() => setDeleteModal(u)} title="Excluir" style={{ color: '#ef4444' }}><i className="fa-solid fa-trash"></i></button>
+                                            )}
+                                        </>
                                     )}
                                 </td>
                             </tr>
                         ))}
-                        {usuarios.length === 0 && (
-                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Nenhum usuario</td></tr>
+                        {usuariosFiltrados.length === 0 && (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Nenhum usuario encontrado</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -152,7 +241,7 @@ export default function UsuariosPage() {
             {modal && (
                 <div className="modal-overlay" onClick={() => setModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h2 className="modal-title">➕ Novo Usuario</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-plus"></i> Novo Usuario</h2>
                         <form onSubmit={handleCriar}>
                             <div className="form-group">
                                 <label className="form-label">Nome</label>
@@ -174,6 +263,37 @@ export default function UsuariosPage() {
                                     <option value="ADMIN">Administrador</option>
                                 </select>
                             </div>
+                            {form.role === 'TECNICO' && (
+                                <div className="form-group">
+                                    <label className="form-label">Limite de Tickets em Atendimento</label>
+                                    <input className="form-input" type="number" min="1" max="100" value={form.max_tickets}
+                                        onChange={e => setForm({ ...form, max_tickets: e.target.value })} />
+                                    <span style={{ fontSize: 11, color: '#a0a0b0' }}>Máximo de chamados simultâneos com status EM_ATENDIMENTO</span>
+                                </div>
+                            )}
+                            {form.role === 'TECNICO' && (
+                                <div className="form-group">
+                                    <label className="form-label">Habilidades * (selecione pelo menos 1)</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {HABILIDADES.map(h => {
+                                            const ativo = (form.habilidades || []).includes(h.value);
+                                            return (
+                                                <button type="button" key={h.value}
+                                                    onClick={() => toggleHab(form, setForm, h.value)}
+                                                    style={{
+                                                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                                                        border: ativo ? '1px solid #6C63FF' : '1px solid var(--cor-borda)',
+                                                        background: ativo ? 'rgba(108,99,255,0.18)' : 'transparent',
+                                                        color: ativo ? '#6C63FF' : 'var(--cor-texto-sec)',
+                                                        cursor: 'pointer', fontWeight: ativo ? 600 : 400
+                                                    }}>
+                                                    {ativo ? '✓ ' : ''}{h.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-danger" onClick={() => setModal(false)}>Cancelar</button>
                                 <button type="submit" className="btn btn-primary">Criar</button>
@@ -187,7 +307,7 @@ export default function UsuariosPage() {
             {editModal && (
                 <div className="modal-overlay" onClick={() => setEditModal(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h2 className="modal-title">✏️ Editar Usuario</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-pen"></i> Editar Usuario</h2>
                         <form onSubmit={handleEditar}>
                             <div className="form-group">
                                 <label className="form-label">Nome</label>
@@ -201,6 +321,37 @@ export default function UsuariosPage() {
                                     <option value="ADMIN">Administrador</option>
                                 </select>
                             </div>
+                            {editForm.role === 'TECNICO' && (
+                                <div className="form-group">
+                                    <label className="form-label">Limite de Tickets em Atendimento</label>
+                                    <input className="form-input" type="number" min="1" max="100" value={editForm.max_tickets}
+                                        onChange={e => setEditForm({ ...editForm, max_tickets: e.target.value })} />
+                                    <span style={{ fontSize: 11, color: '#a0a0b0' }}>Máximo de chamados simultâneos com status EM_ATENDIMENTO</span>
+                                </div>
+                            )}
+                            {editForm.role === 'TECNICO' && (
+                                <div className="form-group">
+                                    <label className="form-label">Habilidades * (selecione pelo menos 1)</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {HABILIDADES.map(h => {
+                                            const ativo = (editForm.habilidades || []).includes(h.value);
+                                            return (
+                                                <button type="button" key={h.value}
+                                                    onClick={() => toggleHab(editForm, setEditForm, h.value)}
+                                                    style={{
+                                                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                                                        border: ativo ? '1px solid #6C63FF' : '1px solid var(--cor-borda)',
+                                                        background: ativo ? 'rgba(108,99,255,0.18)' : 'transparent',
+                                                        color: ativo ? '#6C63FF' : 'var(--cor-texto-sec)',
+                                                        cursor: 'pointer', fontWeight: ativo ? 600 : 400
+                                                    }}>
+                                                    {ativo ? '✓ ' : ''}{h.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-danger" onClick={() => setEditModal(null)}>Cancelar</button>
                                 <button type="submit" className="btn btn-primary">Salvar</button>
@@ -214,7 +365,7 @@ export default function UsuariosPage() {
             {statsModal && (
                 <div className="modal-overlay" onClick={() => setStatsModal(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
-                        <h2 className="modal-title">📊 Estatisticas</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-chart-bar"></i> Estatisticas</h2>
                         <div style={{ textAlign: 'center', padding: 16 }}>
                             <h3 style={{ margin: '0 0 4px', color: '#fff' }}>{statsModal.nome}</h3>
                             <p style={{ color: '#a0a0b0', fontSize: 13, margin: '0 0 16px' }}>{statsModal.email}</p>
@@ -244,7 +395,7 @@ export default function UsuariosPage() {
             {qrModal && (
                 <div className="modal-overlay" onClick={() => setQrModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
-                        <h2 className="modal-title">📱 QR Code de Cadastro</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-qrcode"></i> QR Code de Cadastro</h2>
                         <p style={{ color: '#a0a0b0', fontSize: 13, margin: '0 0 16px' }}>
                             Escaneie para se cadastrar como usuario na organizacao <b style={{ color: '#fff' }}>{org?.nome}</b>
                         </p>
@@ -259,23 +410,49 @@ export default function UsuariosPage() {
                 </div>
             )}
 
+            {/* Modal Excluir Confirmacao */}
+            {deleteModal && (
+                <div className="modal-overlay" onClick={() => setDeleteModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+                        <h2 className="modal-title" style={{ color: '#ef4444' }}><i className="fa-solid fa-triangle-exclamation"></i> Confirmar Exclusão</h2>
+                        <p style={{ color: '#a0a0b0', fontSize: 14, marginBottom: 16 }}>
+                            Tem certeza que deseja excluir <b style={{ color: '#fff' }}>{deleteModal.nome}</b>?
+                            <br/>Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={() => setDeleteModal(null)}>Cancelar</button>
+                            <button type="button" className="btn btn-danger" onClick={() => handleExcluir(deleteModal.id)}>Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Alterar Senha */}
             {senhaModal && (
                 <div className="modal-overlay" onClick={() => setSenhaModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
-                        <h2 className="modal-title">🔒 Alterar Senha</h2>
+                        <h2 className="modal-title"><i className="fa-solid fa-lock"></i> Alterar Senha</h2>
                         <form onSubmit={handleAlterarSenha}>
                             <div className="form-group">
                                 <label className="form-label">Senha Atual</label>
-                                <input className="form-input" type="password" value={senhaForm.senha_atual} onChange={e => setSenhaForm({ ...senhaForm, senha_atual: e.target.value })} required />
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenha.atual ? 'text' : 'password'} value={senhaForm.senha_atual} onChange={e => setSenhaForm({ ...senhaForm, senha_atual: e.target.value })} required style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenha(s => ({ ...s, atual: !s.atual }))} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>{showSenha.atual ? <i className="fa-solid fa-eye-slash"></i> : <i className="fa-solid fa-eye"></i>}</button>
+                                </div>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Nova Senha</label>
-                                <input className="form-input" type="password" value={senhaForm.nova_senha} onChange={e => setSenhaForm({ ...senhaForm, nova_senha: e.target.value })} required minLength={6} />
+                                <label className="form-label">Nova Senha <span style={{ color: '#666', fontSize: 11 }}>(mínimo 6 caracteres)</span></label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenha.nova ? 'text' : 'password'} value={senhaForm.nova_senha} onChange={e => setSenhaForm({ ...senhaForm, nova_senha: e.target.value })} required minLength={6} style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenha(s => ({ ...s, nova: !s.nova }))} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>{showSenha.nova ? <i className="fa-solid fa-eye-slash"></i> : <i className="fa-solid fa-eye"></i>}</button>
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Confirmar Nova Senha</label>
-                                <input className="form-input" type="password" value={senhaForm.confirmar} onChange={e => setSenhaForm({ ...senhaForm, confirmar: e.target.value })} required />
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenha.confirmar ? 'text' : 'password'} value={senhaForm.confirmar} onChange={e => setSenhaForm({ ...senhaForm, confirmar: e.target.value })} required style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenha(s => ({ ...s, confirmar: !s.confirmar }))} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>{showSenha.confirmar ? <i className="fa-solid fa-eye-slash"></i> : <i className="fa-solid fa-eye"></i>}</button>
+                                </div>
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-danger" onClick={() => setSenhaModal(false)}>Cancelar</button>

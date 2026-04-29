@@ -233,10 +233,10 @@ export default function MaquinasPage() {
                 {isAdminOrTec && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button className="btn" onClick={() => downloadAgent('HARDWARE')} style={{ background: 'rgba(108,99,255,0.15)', color: '#6C63FF' }}>
-                            ⬇️ Agent Hardware
+                            <i className="fa-solid fa-download"></i> Agent Hardware
                         </button>
                         <button className="btn" onClick={() => downloadAgent('REDE')} style={{ background: 'rgba(79,195,247,0.15)', color: '#4FC3F7' }}>
-                            ⬇️ Agent Rede
+                            <i className="fa-solid fa-download"></i> Agent Rede
                         </button>
                     </div>
                 )}
@@ -247,17 +247,17 @@ export default function MaquinasPage() {
                 <button className={`btn ${abaAtual === 'HARDWARE' ? 'btn-primary' : ''}`} 
                         style={abaAtual !== 'HARDWARE' ? { background: 'transparent', color: '#a0a0b0' } : {}}
                         onClick={() => setAbaAtual('HARDWARE')}>
-                    💻 Computadores (Hardware)
+                    <i className="fa-solid fa-laptop"></i> Computadores (Hardware)
                 </button>
                 <button className={`btn ${abaAtual === 'REDE' ? 'btn-primary' : ''}`}
                         style={abaAtual !== 'REDE' ? { background: 'transparent', color: '#a0a0b0' } : {}}
                         onClick={() => setAbaAtual('REDE')}>
-                    🌐 Conexões de Rede
+                    <i className="fa-solid fa-globe"></i> Conexões de Rede
                 </button>
                 <button className={`btn ${abaAtual === 'GRUPOS' ? 'btn-primary' : ''}`}
                         style={abaAtual !== 'GRUPOS' ? { background: 'transparent', color: '#a0a0b0' } : {}}
                         onClick={() => setAbaAtual('GRUPOS')}>
-                    🗂️ Grupos de Infraestrutura
+                    <i className="fa-solid fa-folder-open"></i> Grupos de Infraestrutura
                 </button>
             </div>
 
@@ -266,17 +266,17 @@ export default function MaquinasPage() {
                     {/* Indicadores */}
                     <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                         <div className="stat-card" style={{ '--cor-indicador': '#6C63FF' }}>
-                            <span className="stat-icon">🖥️</span>
+                            <span className="stat-icon"><i className="fa-solid fa-desktop"></i></span>
                             <div className="stat-value">{maquinas.length}</div>
                             <div className="stat-label">Total Cadastrado</div>
                         </div>
                         <div className="stat-card" style={{ '--cor-indicador': '#6BCB77' }}>
-                            <span className="stat-icon">🟢</span>
+                            <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i></span>
                             <div className="stat-value">{online}</div>
                             <div className="stat-label">No momento Online</div>
                         </div>
                         <div className="stat-card" style={{ '--cor-indicador': '#FF6B6B' }}>
-                            <span className="stat-icon">🔴</span>
+                            <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i></span>
                             <div className="stat-value">{offline}</div>
                             <div className="stat-label">No momento Offline</div>
                         </div>
@@ -285,7 +285,7 @@ export default function MaquinasPage() {
                     {/* Grafico por Grupo */}
                     {dadosGrafico.length > 0 && (
                         <div className="chart-card" style={{ marginBottom: '24px' }}>
-                            <h3 className="chart-title">📊 Média CPU e Memória por Grupo</h3>
+                            <h3 className="chart-title"><i className="fa-solid fa-chart-bar"></i> Média CPU e Memória por Grupo</h3>
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={dadosGrafico}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
@@ -331,7 +331,7 @@ export default function MaquinasPage() {
                                         <td><code style={{ color: '#4FC3F7', background: 'rgba(79,195,247,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{m.ip || '-'}</code></td>
                                         <td>
                                             <span className={`badge badge-${m.ultimo_status.toLowerCase()}`}>
-                                                {m.ultimo_status === 'ONLINE' ? '🟢' : '🔴'} {m.ultimo_status}
+                                                {m.ultimo_status === 'ONLINE' ? <i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i> : <i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i>} {m.ultimo_status}
                                             </span>
                                         </td>
                                         <td style={{minWidth: '100px'}}>
@@ -355,13 +355,13 @@ export default function MaquinasPage() {
                                         </td>
                                         <td style={{ display: 'flex', gap: '4px' }}>
                                             <button className="btn-icon" onClick={() => abrirHistorico(m)} title="Historico de Chamados"
-                                                style={{ background: 'rgba(79,195,247,0.15)', borderRadius: '6px', padding: '4px 8px' }}>📋</button>
+                                                style={{ background: 'rgba(79,195,247,0.15)', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-clipboard-list"></i></button>
                                             {isAdminOrTec && (
                                                 <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar"
-                                                    style={{ background: 'rgba(108,99,255,0.15)', borderRadius: '6px', padding: '4px 8px' }}>✏️</button>
+                                                    style={{ background: 'rgba(108,99,255,0.15)', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-pen"></i></button>
                                             )}
                                             {user?.role === 'ADMIN' && (
-                                                <button className="btn-icon" onClick={() => handleDeletar(m.id)} title="Remover">🗑️</button>
+                                                <button className="btn-icon" onClick={() => handleDeletar(m.id)} title="Remover"><i className="fa-solid fa-trash"></i></button>
                                             )}
                                         </td>
                                     </tr>
@@ -370,7 +370,7 @@ export default function MaquinasPage() {
                                     <tr>
                                         <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                                             <div className="empty-state">
-                                                <div className="empty-icon">🖥️</div>
+                                                <div className="empty-icon"><i className="fa-solid fa-desktop"></i></div>
                                                 <p className="empty-text">Nenhum equipamento cadastrado.<br /><small>Execute o agent no computador alvo para registrá-lo automaticamente.</small></p>
                                             </div>
                                         </td>
@@ -390,19 +390,19 @@ export default function MaquinasPage() {
                                 <div>
                                     <h3 style={{ fontSize: '20px', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         {m.nome}
-                                        {isAdminOrTec && <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar Nome ou Grupo" style={{ fontSize: '14px', marginTop: '-2px' }}>✏️</button>}
+                                        {isAdminOrTec && <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar Nome ou Grupo" style={{ fontSize: '14px', marginTop: '-2px' }}><i className="fa-solid fa-pen"></i></button>}
                                     </h3>
                                     <div style={{ color: '#a0a0b0', fontSize: '14px', marginTop: '6px' }}>
                                         {m.grupo && <span style={{background: 'rgba(108,99,255,0.15)', color:'#B388FF', padding:'2px 8px', borderRadius: '4px', fontSize: '12px', marginRight: '10px'}}>{m.grupo.nome}</span>}
-                                        <span style={{background: 'rgba(255,255,255,0.05)', padding:'2px 8px', borderRadius: '4px', fontSize: '12px', marginRight: '10px'}}>🌐 IP Público: {m.ip || '-'}</span>
-                                        <span style={{fontSize: '12px'}}>⏱️ Visto última vez: {m.ultima_verificacao ? new Date(m.ultima_verificacao).toLocaleString('pt-BR') : 'Nunca'}</span>
+                                        <span style={{background: 'rgba(255,255,255,0.05)', padding:'2px 8px', borderRadius: '4px', fontSize: '12px', marginRight: '10px'}}><i className="fa-solid fa-globe"></i> IP Público: {m.ip || '-'}</span>
+                                        <span style={{fontSize: '12px'}}><i className="fa-solid fa-clock"></i> Visto última vez: {m.ultima_verificacao ? new Date(m.ultima_verificacao).toLocaleString('pt-BR') : 'Nunca'}</span>
                                     </div>
                                 </div>
                                 <div style={{display:'flex', alignItems: 'center', gap: '8px'}}>
                                     <span className={`badge badge-${m.ultimo_status.toLowerCase()}`}>
-                                        {m.ultimo_status === 'ONLINE' ? '🟢 ONLINE' : '🔴 OFFLINE'}
+                                        {m.ultimo_status === 'ONLINE' ? <><i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i> ONLINE</> : <><i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i> OFFLINE</>}
                                     </span>
-                                    {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => handleDeletar(m.id)}>🗑️</button>}
+                                    {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => handleDeletar(m.id)}><i className="fa-solid fa-trash"></i></button>}
                                 </div>
                             </div>
                             
@@ -413,7 +413,7 @@ export default function MaquinasPage() {
                         </div>
                     )) : (
                         <div className="empty-state" style={{ background: 'var(--cor-superficie)', padding: '50px', borderRadius: '12px' }}>
-                            <div className="empty-icon">🌐</div>
+                            <div className="empty-icon"><i className="fa-solid fa-globe"></i></div>
                             <p className="empty-text">Nenhuma rede monitorada.<br /><small>Execute o Agent de Rede em algum ponto da rede para começar o monitoramento de velocidade de link.</small></p>
                         </div>
                     )}
@@ -447,7 +447,7 @@ export default function MaquinasPage() {
                                         <td style={{fontWeight: '600'}}>{g.nome}</td>
                                         <td style={{color: '#a0a0b0'}}>{new Date(g.created_at).toLocaleDateString()}</td>
                                         <td style={{display:'flex', gap:'8px'}}>
-                                            {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => deletarItemGrupo(g.id)}>🗑️ Deletar</button>}
+                                            {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => deletarItemGrupo(g.id)}><i className="fa-solid fa-trash"></i> Deletar</button>}
                                         </td>
                                     </tr>
                                 ))}

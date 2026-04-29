@@ -53,6 +53,31 @@ class TipoMaquina(str, enum.Enum):
     REDE = "REDE"
 
 
+class Categoria(str, enum.Enum):
+    """Categoria do chamado, definida pelo classificador de ML."""
+    HARDWARE = "HARDWARE"
+    EMAIL = "EMAIL"
+    IMPRESSORA = "IMPRESSORA"
+    SERVIDOR = "SERVIDOR"
+    SOFTWARE = "SOFTWARE"
+    REDES = "REDES"
+    ACESSO = "ACESSO"
+    SEGURANCA = "SEGURANCA"
+    OUTROS = "OUTROS"
+
+
+class Habilidade(str, enum.Enum):
+    """Habilidades possiveis de um tecnico."""
+    REDE = "REDE"
+    HARDWARE = "HARDWARE"
+    SOFTWARE = "SOFTWARE"
+    SEGURANCA = "SEGURANCA"
+    IMPRESSORA = "IMPRESSORA"
+    ACESSOS = "ACESSOS"
+    OUTROS = "OUTROS"
+    SERVIDOR = "SERVIDOR"
+
+
 # ==================== MODELOS ====================
 
 class Organizacao(Base):
@@ -99,6 +124,10 @@ class User(Base):
     role = Column(SAEnum(Role), default=Role.USUARIO, nullable=False)
     organizacao_id = Column(Integer, ForeignKey("organizacoes.id"), nullable=True)
     push_token = Column(String(255), nullable=True)
+    # Lista de habilidades (apenas TECNICO). Ex: ["HARDWARE", "REDE"]
+    habilidades = Column(JSON, nullable=True, default=list)
+    # Limite de chamados EM_ATENDIMENTO simultaneos (apenas TECNICO). Default 10.
+    max_tickets = Column(Integer, nullable=True, default=10)
     created_at = Column(DateTime, default=datetime.now)
 
     # Relacionamentos
@@ -131,7 +160,12 @@ class Chamado(Base):
     )
     prioridade = Column(
         SAEnum(Prioridade),
-        default=Prioridade.MEDIA,
+        default=Prioridade.NENHUMA,
+        nullable=False
+    )
+    categoria = Column(
+        SAEnum(Categoria),
+        default=Categoria.OUTROS,
         nullable=False
     )
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)

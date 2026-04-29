@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { criarChamado, uploadImagem, API_URL } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 
 export default function NovoChamadoScreen({ navigation }) {
@@ -87,7 +88,6 @@ export default function NovoChamadoScreen({ navigation }) {
             await criarChamado({
                 titulo: titulo.trim(),
                 descricao: descricao.trim(),
-                prioridade: 'NENHUMA',
                 imagem_url: imageUrlFinal,
             });
             Alert.alert(
@@ -150,11 +150,11 @@ export default function NovoChamadoScreen({ navigation }) {
                 ) : (
                     <View style={styles.anexosContainer}>
                         <TouchableOpacity style={styles.anexoBotao} onPress={tirarFoto}>
-                            <Text style={styles.anexoEmoji}>📷</Text>
+                            <FontAwesome5 name="camera" size={28} color="#a0a0b0" style={{ marginBottom: 4 }} />
                             <Text style={styles.anexoTexto}>Câmera</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.anexoBotao} onPress={escolherGaleria}>
-                            <Text style={styles.anexoEmoji}>🖼️</Text>
+                            <FontAwesome5 name="image" size={28} color="#a0a0b0" style={{ marginBottom: 4 }} />
                             <Text style={styles.anexoTexto}>Galeria</Text>
                         </TouchableOpacity>
                     </View>
@@ -169,7 +169,7 @@ export default function NovoChamadoScreen({ navigation }) {
                     {enviando ? (
                         <ActivityIndicator color="#FFF" />
                     ) : (
-                        <Text style={styles.enviarTexto}>📨 Abrir Chamado</Text>
+                        <Text style={styles.enviarTexto}><FontAwesome5 name="paper-plane" size={16} color="#FFF" /> Abrir Chamado</Text>
                     )}
                 </TouchableOpacity>
             </ScrollView>
@@ -217,10 +217,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#1a4a7a',
-    },
-    anexoEmoji: {
-        fontSize: 28,
-        marginBottom: 4,
     },
     anexoTexto: {
         color: '#a0a0b0',

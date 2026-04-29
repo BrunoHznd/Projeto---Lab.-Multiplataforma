@@ -10,6 +10,7 @@ import {
     Platform, ScrollView
 } from 'react-native';
 import { registrarComID, testarConexao } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function RegistroScreen({ navigation, route, onLoginSuccess }) {
     const codigoFromRoute = route.params?.codigo || '';
@@ -80,7 +81,7 @@ export default function RegistroScreen({ navigation, route, onLoginSuccess }) {
             <ScrollView contentContainerStyle={styles.scroll}>
                 {/* Cabeçalho */}
                 <View style={styles.header}>
-                    <Text style={styles.emoji}>📝</Text>
+                    <FontAwesome5 name="file-alt" size={60} color="#6C63FF" style={{ marginBottom: 10 }} />
                     <Text style={styles.titulo}>Criar Conta</Text>
                     <Text style={styles.subtitulo}>Use o código fornecido pelo admin</Text>
                 </View>
@@ -166,10 +167,6 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
-    },
-    emoji: {
-        fontSize: 60,
-        marginBottom: 10,
     },
     titulo: {
         fontSize: 32,

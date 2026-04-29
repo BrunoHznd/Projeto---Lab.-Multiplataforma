@@ -9,6 +9,7 @@ import {
     StyleSheet, ScrollView, Alert, ActivityIndicator, Image
 } from 'react-native';
 import { obterChamado, listarLogs, adicionarLog, API_URL } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const STATUS_CORES = {
     ABERTO: '#FF6B6B',
@@ -119,7 +120,7 @@ export default function DetalheChamadoScreen({ route }) {
                     {/* Imagem Anexada */}
                     {chamado.imagem_url && (
                         <View style={styles.imagemAnexada}>
-                            <Text style={styles.imagemLabel}>📎 Imagem Anexada:</Text>
+                            <Text style={styles.imagemLabel}><FontAwesome5 name="paperclip" size={12} color="#a0a0b0" /> Imagem Anexada:</Text>
                             <Image
                                 source={{ uri: `${API_URL}${chamado.imagem_url}` }}
                                 style={styles.imagemAnexadaImg}
@@ -130,21 +131,21 @@ export default function DetalheChamadoScreen({ route }) {
 
                     <View style={styles.metadados}>
                         <Text style={styles.metaTexto}>
-                            📅 Aberto em: {formatarData(chamado.created_at)}
+                            <FontAwesome5 name="calendar-alt" size={12} color="#a0a0b0" /> Aberto em: {formatarData(chamado.created_at)}
                         </Text>
                         <Text style={styles.metaTexto}>
-                            👤 Solicitante: {chamado.usuario?.nome || 'N/A'}
+                            <FontAwesome5 name="user" size={12} color="#a0a0b0" /> Solicitante: {chamado.usuario?.nome || 'N/A'}
                         </Text>
                         {chamado.tecnico && (
                             <Text style={styles.metaTexto}>
-                                🔧 Técnico: {chamado.tecnico.nome}
+                                <FontAwesome5 name="wrench" size={12} color="#a0a0b0" /> Técnico: {chamado.tecnico.nome}
                             </Text>
                         )}
                     </View>
                 </View>
 
                 {/* Histórico de logs */}
-                <Text style={styles.secaoTitulo}>💬 Histórico ({logs.length})</Text>
+                <Text style={styles.secaoTitulo}><FontAwesome5 name="comments" size={16} color="#FFFFFF" /> Histórico ({logs.length})</Text>
                 {logs.length === 0 ? (
                     <Text style={styles.semLogs}>Nenhuma mensagem ainda.</Text>
                 ) : (
@@ -179,7 +180,7 @@ export default function DetalheChamadoScreen({ route }) {
                         {enviandoLog ? (
                             <ActivityIndicator size="small" color="#FFF" />
                         ) : (
-                            <Text style={styles.enviarTexto}>📤</Text>
+                            <FontAwesome5 name="paper-plane" size={20} color="#FFF" />
                         )}
                     </TouchableOpacity>
                 </View>

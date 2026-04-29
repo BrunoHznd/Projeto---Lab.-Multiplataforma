@@ -74,22 +74,22 @@ export default function DashboardPage() {
             {/* Cards de indicadores */}
             <div className="stats-grid">
                 <div className="stat-card" style={{ '--cor-indicador': '#FF6B6B' }}>
-                    <span className="stat-icon">🔴</span>
+                    <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i></span>
                     <div className="stat-value">{abertos}</div>
                     <div className="stat-label">Chamados Abertos</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#FFD93D' }}>
-                    <span className="stat-icon">🟡</span>
+                    <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#FFD93D' }}></i></span>
                     <div className="stat-value">{emAtendimento}</div>
                     <div className="stat-label">Em Atendimento</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#6BCB77' }}>
-                    <span className="stat-icon">🟢</span>
+                    <span className="stat-icon"><i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i></span>
                     <div className="stat-value">{finalizados}</div>
                     <div className="stat-label">Finalizados</div>
                 </div>
                 <div className="stat-card" style={{ '--cor-indicador': '#6C63FF' }}>
-                    <span className="stat-icon">🖥️</span>
+                    <span className="stat-icon"><i className="fa-solid fa-desktop"></i></span>
                     <div className="stat-value">{maqOnline}/{maquinas.length}</div>
                     <div className="stat-label">Máquinas Online</div>
                 </div>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
             {/* Gráficos */}
             <div className="charts-grid">
                 <div className="chart-card">
-                    <h3 className="chart-title">📊 Distribuição de Chamados</h3>
+                    <h3 className="chart-title"><i className="fa-solid fa-chart-bar"></i> Distribuição de Chamados</h3>
                     {dadosPizza.length > 0 ? (
                         <ResponsiveContainer width="100%" height={250}>
                             <PieChart>
@@ -121,14 +121,14 @@ export default function DashboardPage() {
                         </ResponsiveContainer>
                     ) : (
                         <div className="empty-state">
-                            <div className="empty-icon">📭</div>
+                            <div className="empty-icon"><i className="fa-solid fa-inbox"></i></div>
                             <p className="empty-text">Nenhum chamado registrado</p>
                         </div>
                     )}
                 </div>
 
                 <div className="chart-card">
-                    <h3 className="chart-title">📈 Chamados por Status</h3>
+                    <h3 className="chart-title"><i className="fa-solid fa-chart-line"></i> Chamados por Status</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={dadosBarra}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
@@ -151,7 +151,7 @@ export default function DashboardPage() {
             {/* Chamados recentes */}
             <div className="table-container">
                 <div className="table-header">
-                    <h3 className="table-title">📋 Chamados Recentes</h3>
+                    <h3 className="table-title"><i className="fa-solid fa-clipboard-list"></i> Chamados Recentes</h3>
                 </div>
                 <table>
                     <thead>

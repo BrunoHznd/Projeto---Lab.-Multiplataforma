@@ -11,6 +11,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, ActivityIndicator, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
 import { isAuthenticated, logout } from './services/api';
@@ -65,7 +66,7 @@ function TabNavigator({ onLogout }) {
                     title: 'Inicio',
                     headerTitle: 'tiResolve',
                     tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: size, color }}>🏠</Text>
+                        <FontAwesome5 name="home" size={size} color={color} />
                     ),
                 }}
             >
@@ -77,7 +78,7 @@ function TabNavigator({ onLogout }) {
                 options={{
                     title: 'Chamados',
                     tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: size, color }}>📋</Text>
+                        <FontAwesome5 name="clipboard-list" size={size} color={color} />
                     ),
                 }}
             />
@@ -87,7 +88,7 @@ function TabNavigator({ onLogout }) {
                 options={{
                     title: 'Novo',
                     tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: size, color }}>➕</Text>
+                        <FontAwesome5 name="plus" size={size} color={color} />
                     ),
                 }}
             />

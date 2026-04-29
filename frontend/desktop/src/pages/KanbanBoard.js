@@ -8,9 +8,9 @@ import React, { useState, useEffect } from 'react';
 import { listarChamados, atualizarChamado, adicionarLog, listarLogs } from '../services/api';
 
 const COLUNAS = [
-    { status: 'ABERTO', titulo: '🔴 Abertos', cor: '#FF6B6B' },
-    { status: 'EM_ATENDIMENTO', titulo: '🟡 Em Atendimento', cor: '#FFD93D' },
-    { status: 'FINALIZADO', titulo: '🟢 Finalizados', cor: '#6BCB77' },
+    { status: 'ABERTO', titulo: 'Abertos', icon: 'fa-circle', cor: '#FF6B6B' },
+    { status: 'EM_ATENDIMENTO', titulo: 'Em Atendimento', icon: 'fa-circle', cor: '#FFD93D' },
+    { status: 'FINALIZADO', titulo: 'Finalizados', icon: 'fa-circle', cor: '#6BCB77' },
 ];
 
 export default function KanbanBoard() {
@@ -75,10 +75,10 @@ export default function KanbanBoard() {
         <div className="animate-in">
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title">📋 Kanban de Chamados</h1>
+                    <h1 className="page-title"><i className="fa-solid fa-columns"></i> Kanban de Chamados</h1>
                     <p className="page-subtitle">Gerencie chamados arrastando entre colunas</p>
                 </div>
-                <button className="btn btn-primary" onClick={carregar}>🔄 Atualizar</button>
+                <button className="btn btn-primary" onClick={carregar}><i className="fa-solid fa-rotate"></i> Atualizar</button>
             </div>
 
             {/* Board */}
@@ -88,7 +88,7 @@ export default function KanbanBoard() {
                     return (
                         <div key={coluna.status} className="kanban-column">
                             <div className="kanban-header" style={{ borderBottom: `3px solid ${coluna.cor}` }}>
-                                <span className="kanban-title">{coluna.titulo}</span>
+                                <span className="kanban-title"><i className={`fa-solid ${coluna.icon}`} style={{ color: coluna.cor, marginRight: 6 }}></i>{coluna.titulo}</span>
                                 <span className="kanban-count">{cards.length}</span>
                             </div>
                             <div className="kanban-cards">
@@ -110,7 +110,7 @@ export default function KanbanBoard() {
                                 ))}
                                 {cards.length === 0 && (
                                     <div className="empty-state">
-                                        <div className="empty-icon" style={{ fontSize: '28px' }}>📭</div>
+                                        <div className="empty-icon" style={{ fontSize: '28px' }}><i className="fa-solid fa-inbox"></i></div>
                                         <p className="empty-text" style={{ fontSize: '12px' }}>Nenhum chamado</p>
                                     </div>
                                 )}
@@ -126,16 +126,16 @@ export default function KanbanBoard() {
                     <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
                             <h2 className="modal-title" style={{ margin: 0 }}>#{modal.id} {modal.titulo}</h2>
-                            <button className="btn-icon" onClick={() => setModal(null)}>✖️</button>
+                            <button className="btn-icon" onClick={() => setModal(null)}><i className="fa-solid fa-xmark"></i></button>
                         </div>
 
                         {/* Info */}
                         <div style={{ background: 'var(--cor-superficie)', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
                             <p style={{ color: 'var(--cor-texto)', marginBottom: '10px', fontSize: '13px', lineHeight: '1.6' }}>{modal.descricao}</p>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--cor-texto-sec)' }}>
-                                <span>👤 {modal.usuario?.nome || 'N/A'}</span>
-                                <span>🔧 {modal.tecnico?.nome || 'Sem técnico'}</span>
-                                <span>📅 {formatarData(modal.created_at)}</span>
+                                <span><i className="fa-solid fa-user"></i> {modal.usuario?.nome || 'N/A'}</span>
+                                <span><i className="fa-solid fa-wrench"></i> {modal.tecnico?.nome || 'Sem técnico'}</span>
+                                <span><i className="fa-solid fa-calendar-alt"></i> {formatarData(modal.created_at)}</span>
                             </div>
                         </div>
 
@@ -158,7 +158,7 @@ export default function KanbanBoard() {
 
                         {/* Logs */}
                         <div>
-                            <label className="form-label">💬 Logs Técnicos ({logs.length})</label>
+                            <label className="form-label"><i className="fa-solid fa-comments"></i> Logs Técnicos ({logs.length})</label>
                             <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '12px' }}>
                                 {logs.map(log => (
                                     <div key={log.id} style={{ background: 'var(--cor-superficie)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }}>
@@ -182,7 +182,7 @@ export default function KanbanBoard() {
                                     onKeyDown={(e) => e.key === 'Enter' && handleAdicionarLog()}
                                     style={{ flex: 1 }}
                                 />
-                                <button className="btn btn-primary btn-sm" onClick={handleAdicionarLog}>📤 Enviar</button>
+                                <button className="btn btn-primary btn-sm" onClick={handleAdicionarLog}><i className="fa-solid fa-paper-plane"></i> Enviar</button>
                             </div>
                         </div>
                     </div>

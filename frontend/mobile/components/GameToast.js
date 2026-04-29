@@ -9,6 +9,7 @@ import {
     View, Text, TouchableOpacity, StyleSheet,
     Animated, Dimensions
 } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -16,19 +17,19 @@ const TIPO_CONFIG = {
     STATUS: {
         gradientStart: '#6C63FF',
         gradientEnd: '#5a52d5',
-        icon: '🔧',
+        iconName: 'wrench',
         glow: 'rgba(108, 99, 255, 0.4)',
     },
     MENSAGEM: {
         gradientStart: '#4FC3F7',
         gradientEnd: '#0288D1',
-        icon: '💬',
+        iconName: 'comments',
         glow: 'rgba(79, 195, 247, 0.4)',
     },
     FINALIZADO: {
         gradientStart: '#6BCB77',
         gradientEnd: '#4CAF50',
-        icon: '✅',
+        iconName: 'check-circle',
         glow: 'rgba(107, 203, 119, 0.4)',
     },
 };
@@ -144,7 +145,7 @@ export default function GameToast({ notificacao, onPress, onDismiss }) {
                             { transform: [{ scale: pulseAnim }] },
                         ]}
                     >
-                        <Text style={styles.icon}>{config.icon}</Text>
+                        <FontAwesome5 name={config.iconName} size={26} color="#FFFFFF" solid />
                     </Animated.View>
 
                     {/* Textos */}
@@ -217,9 +218,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    icon: {
-        fontSize: 26,
     },
     textContainer: {
         flex: 1,

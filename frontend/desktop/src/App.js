@@ -25,15 +25,15 @@ function Layout({ children }) {
     };
 
     const links = [
-        { to: '/kanban', icon: '📋', label: 'Kanban' },
-        { to: '/maquinas', icon: '🖥️', label: 'Monitoramento' },
+        { to: '/kanban', icon: 'fa-columns', label: 'Kanban' },
+        { to: '/maquinas', icon: 'fa-desktop', label: 'Monitoramento' },
     ];
 
     return (
         <div className="app-layout">
             <aside className="sidebar">
                 <div className="sidebar-logo">
-                    <span className="sidebar-logo-icon">🔧</span>
+                    <span className="sidebar-logo-icon"><i className="fa-solid fa-wrench"></i></span>
                     <h2>tiResolve<span>Painel Técnico</span></h2>
                 </div>
 
@@ -44,7 +44,7 @@ function Layout({ children }) {
                             to={link.to}
                             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                         >
-                            <span className="sidebar-link-icon">{link.icon}</span>
+                            <span className="sidebar-link-icon"><i className={`fa-solid ${link.icon}`}></i></span>
                             {link.label}
                         </NavLink>
                     ))}
@@ -56,7 +56,7 @@ function Layout({ children }) {
                         <div className="sidebar-user-name">{user?.nome || 'Técnico'}</div>
                         <div className="sidebar-user-role">{user?.role || 'TECNICO'}</div>
                     </div>
-                    <button className="sidebar-logout" onClick={handleLogout} title="Sair">🚪</button>
+                    <button className="sidebar-logout" onClick={handleLogout} title="Sair"><i className="fa-solid fa-right-from-bracket"></i></button>
                 </div>
             </aside>
 

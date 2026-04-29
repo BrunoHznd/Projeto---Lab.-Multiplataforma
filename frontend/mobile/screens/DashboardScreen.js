@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { listarChamados, getUsuarioLogado } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function DashboardScreen({ navigation, onLogout }) {
     const [usuario, setUsuario] = useState(null);
@@ -68,7 +69,7 @@ export default function DashboardScreen({ navigation, onLogout }) {
         >
             {/* Saudação */}
             <View style={styles.saudacao}>
-                <Text style={styles.ola}>Olá, {usuario?.nome || 'Usuário'} 👋</Text>
+                <Text style={styles.ola}>Olá, {usuario?.nome || 'Usuário'}</Text>
                 <TouchableOpacity onPress={handleLogout}>
                     <Text style={styles.sairTexto}>Sair</Text>
                 </TouchableOpacity>
@@ -104,7 +105,7 @@ export default function DashboardScreen({ navigation, onLogout }) {
                     style={styles.acaoBotao}
                     onPress={() => navigation.navigate('NovoChamado')}
                 >
-                    <Text style={styles.acaoEmoji}>🆕</Text>
+                    <FontAwesome5 name="plus-circle" size={32} color="#6C63FF" style={{ marginBottom: 8 }} />
                     <Text style={styles.acaoTexto}>Abrir Chamado</Text>
                 </TouchableOpacity>
 
@@ -112,7 +113,7 @@ export default function DashboardScreen({ navigation, onLogout }) {
                     style={styles.acaoBotao}
                     onPress={() => navigation.navigate('Chamados')}
                 >
-                    <Text style={styles.acaoEmoji}>📋</Text>
+                    <FontAwesome5 name="clipboard-list" size={32} color="#6C63FF" style={{ marginBottom: 8 }} />
                     <Text style={styles.acaoTexto}>Ver Chamados</Text>
                 </TouchableOpacity>
             </View>
@@ -190,10 +191,6 @@ const styles = StyleSheet.create({
         width: '48%',
         borderWidth: 1,
         borderColor: '#1a4a7a',
-    },
-    acaoEmoji: {
-        fontSize: 32,
-        marginBottom: 8,
     },
     acaoTexto: {
         color: '#FFFFFF',

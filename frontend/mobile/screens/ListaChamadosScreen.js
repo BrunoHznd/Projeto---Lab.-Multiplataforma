@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { listarChamados } from '../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 import ChamadoCard from '../components/ChamadoCard';
 
 const FILTROS = [
@@ -98,7 +99,7 @@ export default function ListaChamadosScreen({ navigation }) {
                 }
                 ListEmptyComponent={
                     <View style={styles.vazio}>
-                        <Text style={styles.vazioEmoji}>📭</Text>
+                        <FontAwesome5 name="inbox" size={48} color="#a0a0b0" style={{ marginBottom: 12 }} />
                         <Text style={styles.vazioTexto}>Nenhum chamado encontrado</Text>
                     </View>
                 }
@@ -147,10 +148,6 @@ const styles = StyleSheet.create({
     vazio: {
         alignItems: 'center',
         padding: 40,
-    },
-    vazioEmoji: {
-        fontSize: 48,
-        marginBottom: 12,
     },
     vazioTexto: {
         color: '#a0a0b0',

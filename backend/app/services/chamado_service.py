@@ -12,8 +12,13 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Chamado, LogChamado, StatusChamado, User, Role, Notificacao, TipoNotificacao
+from app.models import (
+    Chamado, LogChamado, StatusChamado, User, Role,
+    Notificacao, TipoNotificacao, Categoria, Prioridade
+)
 from app.services.push_service import enviar_push_para_usuario
+from app.services.ml_service import classificar
+from app.services.atribuicao_service import escolher_tecnico
 
 
 def listar_chamados(
@@ -61,20 +66,55 @@ def obter_chamado(db: Session, chamado_id: int) -> Optional[Chamado]:
 
 
 def criar_chamado(db: Session, chamado_data: dict, usuario_id: int) -> Chamado:
-    """Cria um novo chamado (apenas USUARIO)."""
-    # Busca org do usuario
+    """Cria um novo chamado.
+
+    Fluxo:
+    1. Classifica titulo+descricao via ML -> `Categoria`.
+    2. Tenta auto-atribuir tecnico (regras de habilidade + limite 10).
+    3. Se atribuiu, status=EM_ATENDIMENTO, gera notificacao para o tecnico.
+    4. Caso contrario, status=ABERTO -> ADMIN decide.
+    """
     user = db.query(User).filter(User.id == usuario_id).first()
+    org_id = user.organizacao_id if user else None
+
+    titulo = chamado_data["titulo"]
+    descricao = chamado_data["descricao"]
+
+    # 1) Classificacao via ML
+    categoria = classificar(titulo, descricao)
+
     chamado = Chamado(
-        titulo=chamado_data["titulo"],
-        descricao=chamado_data["descricao"],
-        prioridade=chamado_data.get("prioridade", "MEDIA"),
+        titulo=titulo,
+        descricao=descricao,
+        prioridade=Prioridade.NENHUMA,  # so tecnico/admin definem depois
+        categoria=categoria,
         imagem_url=chamado_data.get("imagem_url"),
         maquina_id=chamado_data.get("maquina_id"),
         usuario_id=usuario_id,
-        organizacao_id=user.organizacao_id if user else None,
-        status=StatusChamado.ABERTO
+        organizacao_id=org_id,
+        status=StatusChamado.ABERTO,
     )
     db.add(chamado)
+    db.flush()
+
+    # 2) Auto-atribuicao
+    tecnico = escolher_tecnico(db, org_id, categoria)
+    if tecnico is not None:
+        chamado.tecnico_id = tecnico.id
+        chamado.status = StatusChamado.EM_ATENDIMENTO
+
+        titulo_notif = "\U0001F4E5 Novo Chamado Atribuido"
+        corpo_notif = (
+            f"Chamado #{chamado.id} ({categoria.value}) atribuido automaticamente a voce."
+        )
+        db.add(Notificacao(
+            user_id=tecnico.id,
+            chamado_id=chamado.id,
+            tipo=TipoNotificacao.STATUS,
+            titulo=titulo_notif,
+            corpo=corpo_notif,
+        ))
+
     db.commit()
     db.refresh(chamado)
     return chamado
@@ -226,6 +266,12 @@ def atualizar_chamado(
     if user.role == Role.TECNICO:
         if chamado.tecnico_id != user.id:
             return None
+
+    # Regra: prioridade so pode ser alterada pelo TECNICO atribuido ou ADMIN.
+    # (TECNICO ja foi validado acima como sendo o atribuido; ADMIN passa).
+    # Se for outra role, remove o campo silenciosamente.
+    if "prioridade" in dados and user.role not in (Role.ADMIN, Role.TECNICO):
+        dados.pop("prioridade", None)
 
     # Detecta mudancas relevantes para notificacao
     alteracoes = []

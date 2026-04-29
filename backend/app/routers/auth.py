@@ -156,12 +156,24 @@ async def register(
             detail="Email ja cadastrado no sistema"
         )
 
+    # Habilidades obrigatorias para TECNICO
+    habilidades = None
+    if dados.habilidades:
+        habilidades = [h.value if hasattr(h, "value") else str(h) for h in dados.habilidades]
+    if dados.role == Role.TECNICO and not habilidades:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tecnico deve ter pelo menos 1 habilidade"
+        )
+
     novo_user = User(
         nome=dados.nome,
         email=dados.email,
         senha_hash=hash_senha(dados.senha),
         role=dados.role,
-        organizacao_id=current_user.organizacao_id
+        organizacao_id=current_user.organizacao_id,
+        habilidades=habilidades or [],
+        max_tickets=dados.max_tickets if dados.role == Role.TECNICO and dados.max_tickets is not None else (10 if dados.role == Role.TECNICO else None),
     )
     db.add(novo_user)
     db.commit()
@@ -242,6 +254,17 @@ async def editar_usuario(
         if existente:
             raise HTTPException(status_code=400, detail="Email indisponivel")
         user.email = dados.email
+    if dados.habilidades is not None:
+        user.habilidades = [h.value if hasattr(h, "value") else str(h) for h in dados.habilidades]
+    if dados.max_tickets is not None and user.role == Role.TECNICO:
+        user.max_tickets = dados.max_tickets
+
+    # Tecnico precisa ter ao menos 1 habilidade
+    if user.role == Role.TECNICO and (not user.habilidades or len(user.habilidades) < 1):
+        raise HTTPException(
+            status_code=400,
+            detail="Tecnico deve ter pelo menos 1 habilidade"
+        )
 
     db.commit()
     db.refresh(user)
@@ -261,6 +284,53 @@ async def alterar_senha(
     current_user.senha_hash = hash_senha(dados.nova_senha)
     db.commit()
     return {"detail": "Senha alterada com sucesso"}
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deletar_usuario(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Exclui um usuario da organizacao. Apenas ADMIN."""
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem excluir usuarios")
+
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Nao e possivel excluir o proprio usuario")
+
+    user = db.query(User).filter(
+        User.id == user_id,
+        User.organizacao_id == current_user.organizacao_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    # Verifica se o usuario tem chamados nao finalizados
+    chamados_pendentes = db.query(Chamado).filter(
+        Chamado.usuario_id == user_id,
+        Chamado.status != StatusChamado.FINALIZADO
+    ).count()
+    if chamados_pendentes > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Nao e possivel excluir usuario com chamados pendentes (abra, em atendimento ou finalizados). Finalize ou reatribua os chamados primeiro."
+        )
+
+    # Verifica se o usuario e tecnico de chamados pendentes
+    chamados_tecnico = db.query(Chamado).filter(
+        Chamado.tecnico_id == user_id,
+        Chamado.status != StatusChamado.FINALIZADO
+    ).count()
+    if chamados_tecnico > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Nao e possivel excluir usuario que e tecnico em chamados pendentes. Reatribua os chamados primeiro."
+        )
+
+    db.delete(user)
+    db.commit()
+    return
 
 
 @router.get("/users/{user_id}/stats", response_model=UserStatsResponse)

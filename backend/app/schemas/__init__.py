@@ -4,10 +4,13 @@ Define os schemas de request/response para a API.
 """
 
 from datetime import datetime
-from typing import Optional, Any
-from pydantic import BaseModel
+from typing import Optional, Any, List
+from pydantic import BaseModel, field_validator
 
-from app.models import Role, StatusChamado, Prioridade, StatusMaquina, TipoNotificacao, TipoMaquina
+from app.models import (
+    Role, StatusChamado, Prioridade, StatusMaquina,
+    TipoNotificacao, TipoMaquina, Categoria, Habilidade
+)
 
 
 # ==================== ORGANIZACAO ====================
@@ -64,6 +67,17 @@ class UserCreate(BaseModel):
     email: str
     senha: str
     role: Role = Role.USUARIO
+    habilidades: Optional[List[Habilidade]] = None
+    max_tickets: Optional[int] = None
+
+    @field_validator("habilidades")
+    @classmethod
+    def _valida_habilidades(cls, v, info):
+        role = info.data.get("role")
+        if role == Role.TECNICO:
+            if not v or len(v) < 1:
+                raise ValueError("Tecnico deve ter pelo menos 1 habilidade")
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -71,6 +85,8 @@ class UserUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[str] = None
     role: Optional[Role] = None
+    habilidades: Optional[List[Habilidade]] = None
+    max_tickets: Optional[int] = None
 
 
 class AlterarSenhaRequest(BaseModel):
@@ -97,6 +113,8 @@ class UserResponse(BaseModel):
     email: str
     role: Role
     organizacao_id: Optional[int] = None
+    habilidades: Optional[List[str]] = None
+    max_tickets: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -106,10 +124,12 @@ class UserResponse(BaseModel):
 # ==================== CHAMADOS ====================
 
 class ChamadoCreate(BaseModel):
-    """Schema para criacao de chamado (apenas USUARIO cria)."""
+    """Schema para criacao de chamado (apenas USUARIO cria).
+    Prioridade NAO eh aceita aqui: somente o tecnico atribuido ou ADMIN definem.
+    A categoria eh determinada automaticamente pelo classificador de ML.
+    """
     titulo: str
     descricao: str
-    prioridade: Prioridade = Prioridade.NENHUMA
     imagem_url: Optional[str] = None
     maquina_id: Optional[int] = None
 
@@ -149,6 +169,7 @@ class ChamadoResponse(BaseModel):
     imagem_url: Optional[str] = None
     status: StatusChamado
     prioridade: Prioridade
+    categoria: Categoria
     usuario_id: int
     tecnico_id: Optional[int] = None
     maquina_id: Optional[int] = None
