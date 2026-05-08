@@ -22,6 +22,7 @@ from app.services.chamado_service import (
     atribuir_tecnico, finalizar_chamado, listar_tecnicos
 )
 from app.services.push_service import enviar_push_para_usuario
+from app.services.ws_manager import manager as ws_manager
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/chamados", tags=["Chamados"])
@@ -49,7 +50,10 @@ async def novo_chamado(
     if current_user.role != Role.USUARIO:
         raise HTTPException(status_code=403, detail="Apenas usuarios podem abrir chamados")
     chamado = criar_chamado(db, dados.model_dump(), current_user.id)
-    return obter_chamado(db, chamado.id)
+    result = obter_chamado(db, chamado.id)
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_criado", {"id": chamado.id})
+    return result
 
 
 @router.get("/tecnicos", response_model=list[UserResponse])
@@ -97,7 +101,10 @@ async def atribuir_chamado(
             enviar_push_para_usuario(db, pi["user_id"], pi["titulo"], pi["corpo"], pi["data"])
         )
 
-    return obter_chamado(db, chamado_id)
+    result = obter_chamado(db, chamado_id)
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_atribuido", {"id": chamado_id})
+    return result
 
 
 @router.put("/{chamado_id}/finalizar", response_model=ChamadoResponse)
@@ -121,7 +128,10 @@ async def finalizar(
             enviar_push_para_usuario(db, pi["user_id"], pi["titulo"], pi["corpo"], pi["data"])
         )
 
-    return obter_chamado(db, chamado_id)
+    result = obter_chamado(db, chamado_id)
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_finalizado", {"id": chamado_id})
+    return result
 
 
 @router.put("/{chamado_id}/editar", response_model=ChamadoResponse)
@@ -159,7 +169,10 @@ async def editar_chamado_usuario(
         db.add(log)
 
     db.commit()
-    return obter_chamado(db, chamado_id)
+    result = obter_chamado(db, chamado_id)
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_editado", {"id": chamado_id})
+    return result
 
 
 @router.put("/{chamado_id}", response_model=ChamadoResponse)
@@ -181,7 +194,10 @@ async def editar_chamado(
             enviar_push_para_usuario(db, pi["user_id"], pi["titulo"], pi["corpo"], pi["data"])
         )
 
-    return obter_chamado(db, chamado_id)
+    result = obter_chamado(db, chamado_id)
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_atualizado", {"id": chamado_id})
+    return result
 
 
 @router.delete("/{chamado_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -193,6 +209,8 @@ async def remover_chamado(
     """Remove um chamado. Somente administradores."""
     if not deletar_chamado(db, chamado_id, current_user):
         raise HTTPException(status_code=403, detail="Sem permissao para deletar")
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_deletado", {"id": chamado_id})
 
 
 # ================ CHAT / LOGS ================
@@ -279,6 +297,9 @@ async def enviar_mensagem(
             )
         )
 
-    return db.query(LogChamado).options(
+    result = db.query(LogChamado).options(
         joinedload(LogChamado.autor)
     ).filter(LogChamado.id == log.id).first()
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "nova_mensagem", {"chamado_id": chamado_id})
+    return result

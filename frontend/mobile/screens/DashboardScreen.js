@@ -20,6 +20,7 @@ export default function DashboardScreen({ navigation, onLogout }) {
         finalizados: 0,
         total: 0,
     });
+    const [ticketsEmAndamento, setTicketsEmAndamento] = useState([]);
     const [atualizando, setAtualizando] = useState(false);
 
     // Carrega dados ao focar na tela
@@ -42,6 +43,16 @@ export default function DashboardScreen({ navigation, onLogout }) {
                 finalizados: chamados.filter(c => c.status === 'FINALIZADO').length,
                 total: chamados.length,
             });
+
+            const emAndamento = chamados
+                .filter(c => c.status === 'EM_ATENDIMENTO')
+                .sort((a, b) => {
+                    const da = new Date(a.updated_at || a.created_at || 0);
+                    const db = new Date(b.updated_at || b.created_at || 0);
+                    return db - da;
+                })
+                .slice(0, 3);
+            setTicketsEmAndamento(emAndamento);
         } catch (error) {
             console.log('Erro ao carregar dashboard:', error.message);
         } finally {
@@ -98,25 +109,39 @@ export default function DashboardScreen({ navigation, onLogout }) {
                 </View>
             </View>
 
-            {/* Ações rápidas */}
-            <Text style={styles.secaoTitulo}>Ações Rápidas</Text>
-            <View style={styles.acoes}>
-                <TouchableOpacity
-                    style={styles.acaoBotao}
-                    onPress={() => navigation.navigate('NovoChamado')}
-                >
-                    <FontAwesome5 name="plus-circle" size={32} color="#6C63FF" style={{ marginBottom: 8 }} />
-                    <Text style={styles.acaoTexto}>Abrir Chamado</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.acaoBotao}
-                    onPress={() => navigation.navigate('Chamados')}
-                >
-                    <FontAwesome5 name="clipboard-list" size={32} color="#6C63FF" style={{ marginBottom: 8 }} />
-                    <Text style={styles.acaoTexto}>Ver Chamados</Text>
-                </TouchableOpacity>
-            </View>
+            {/* Tickets Em Andamento */}
+            <Text style={styles.secaoTitulo}>Em Andamento</Text>
+            {ticketsEmAndamento.length === 0 ? (
+                <View style={styles.semTickets}>
+                    <FontAwesome5 name="check-circle" size={28} color="#6BCB77" style={{ marginBottom: 8 }} />
+                    <Text style={styles.semTicketsTexto}>Nenhum chamado em andamento</Text>
+                </View>
+            ) : (
+                ticketsEmAndamento.map(ticket => (
+                    <TouchableOpacity
+                        key={ticket.id}
+                        style={styles.ticketCard}
+                        onPress={() => navigation.navigate('DetalheChamado', { chamadoId: ticket.id })}
+                        activeOpacity={0.75}
+                    >
+                        <View style={styles.ticketHeader}>
+                            <Text style={styles.ticketId}>#{ticket.id}</Text>
+                            <View style={styles.ticketBadge}>
+                                <Text style={styles.ticketBadgeTexto}>Em Andamento</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.ticketTitulo} numberOfLines={2}>{ticket.titulo}</Text>
+                        <View style={styles.ticketFooter}>
+                            <FontAwesome5 name="user" size={11} color="#a0a0b0" />
+                            <Text style={styles.ticketMeta}>
+                                {ticket.tecnico_nome || ticket.tecnico?.nome || 'Sem técnico'}
+                            </Text>
+                            <FontAwesome5 name="tag" size={11} color="#a0a0b0" style={{ marginLeft: 10 }} />
+                            <Text style={styles.ticketMeta}>{ticket.categoria || '—'}</Text>
+                        </View>
+                    </TouchableOpacity>
+                ))
+            )}
         </ScrollView>
     );
 }
@@ -179,22 +204,67 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         marginBottom: 16,
     },
-    acoes: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    acaoBotao: {
+    semTickets: {
+        alignItems: 'center',
+        paddingVertical: 28,
         backgroundColor: '#16213e',
         borderRadius: 12,
-        padding: 20,
-        alignItems: 'center',
-        width: '48%',
         borderWidth: 1,
         borderColor: '#1a4a7a',
     },
-    acaoTexto: {
-        color: '#FFFFFF',
+    semTicketsTexto: {
+        color: '#a0a0b0',
         fontSize: 14,
+    },
+    ticketCard: {
+        backgroundColor: '#16213e',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FFD93D',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    ticketHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    ticketId: {
+        color: '#6C63FF',
+        fontWeight: '700',
+        fontSize: 13,
+    },
+    ticketBadge: {
+        backgroundColor: 'rgba(255,217,61,0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    ticketBadgeTexto: {
+        color: '#FFD93D',
+        fontSize: 11,
         fontWeight: '600',
+    },
+    ticketTitulo: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    ticketFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    ticketMeta: {
+        color: '#a0a0b0',
+        fontSize: 12,
+        marginLeft: 4,
     },
 });

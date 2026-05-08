@@ -1,22 +1,24 @@
 /**
  * tiResolve Web - Pagina de Login
- * 3 opcoes: Login, Cadastrar com ID, Sou Novo Na Plataforma
+ * 2 opcoes: Login e Cadastrar com ID da Organizacao.
+ * A criacao de novas organizacoes e exclusiva do SysAdmin.
  */
 
 import React, { useState, useEffect } from 'react';
-import { login, criarOrganizacao, registrarComID, uploadImagem } from '../services/api';
+import { login, registrarComID, redefinirSenha } from '../services/api';
 
 export default function LoginPage() {
     const [modo, setModo] = useState('login');
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const [nome, setNome] = useState('');
-    const [nomeEmpresa, setNomeEmpresa] = useState('');
     const [codigoOrg, setCodigoOrg] = useState('');
-    const [logoFile, setLogoFile] = useState(null);
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState('');
     const [sucesso, setSucesso] = useState('');
+    // Redefinição de senha
+    const [novaSenha, setNovaSenha] = useState('');
+    const [confirmarSenha, setConfirmarSenha] = useState('');
 
     // Auto-preencher org code do QR Code (URL ?org=CODIGO)
     useEffect(() => {
@@ -32,8 +34,11 @@ export default function LoginPage() {
         e.preventDefault();
         setCarregando(true); setErro('');
         try {
-            await login(email, senha);
-            window.location.href = '/chamados';
+            const res = await login(email, senha);
+            const role = res?.user?.role;
+            if (role === 'SYSADMIN') window.location.href = '/sysadmin';
+            else if (role === 'USUARIO') window.location.href = '/chamados';
+            else window.location.href = '/dashboard';
         } catch (err) {
             setErro(err.response?.data?.detail || 'Email ou senha incorretos');
         }
@@ -52,27 +57,25 @@ export default function LoginPage() {
         setCarregando(false);
     };
 
-    const handleNovaOrg = async (e) => {
+    const handleRedefinirSenha = async (e) => {
         e.preventDefault();
-        setCarregando(true); setErro('');
+        setErro(''); setSucesso('');
+        if (novaSenha !== confirmarSenha) {
+            setErro('As senhas não coincidem');
+            return;
+        }
+        if (novaSenha.length < 6) {
+            setErro('A nova senha deve ter no mínimo 6 caracteres');
+            return;
+        }
+        setCarregando(true);
         try {
-            // Cria org primeiro (logo depois - precisa do token)
-            const res = await criarOrganizacao({
-                nome_empresa: nomeEmpresa,
-                email_admin: email,
-                senha_admin: senha,
-                logo_url: null
-            });
-            // Agora com token, faz upload do logo se houver
-            if (logoFile) {
-                try {
-                    const upload = await uploadImagem(logoFile);
-                    // TODO: atualizar logo da org via endpoint
-                } catch { /* logo é opcional, segue sem */ }
-            }
-            window.location.href = '/dashboard';
+            await redefinirSenha(email, codigoOrg, novaSenha);
+            setSucesso('Senha redefinida com sucesso! Você já pode entrar com a nova senha.');
+            setSenha(''); setNovaSenha(''); setConfirmarSenha('');
+            setModo('login');
         } catch (err) {
-            setErro(err.response?.data?.detail || 'Erro ao criar organizacao');
+            setErro(err.response?.data?.detail || 'Não foi possível redefinir a senha');
         }
         setCarregando(false);
     };
@@ -85,7 +88,7 @@ export default function LoginPage() {
                 <p className="login-subtitle">
                     {modo === 'login' && 'Acesse sua conta'}
                     {modo === 'cadastro_id' && 'Cadastrar com ID da Organizacao'}
-                    {modo === 'nova_org' && 'Criar Nova Organizacao'}
+                    {modo === 'redefinir' && 'Redefinir minha senha'}
                 </p>
 
                 {erro && (
@@ -112,6 +115,43 @@ export default function LoginPage() {
                         </div>
                         <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={carregando}>
                             {carregando ? 'Entrando...' : 'Entrar'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setModo('redefinir'); setErro(''); setSucesso(''); }}
+                            style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--cor-primaria)', cursor: 'pointer', fontSize: 13, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}
+                        >
+                            <i className="fa-solid fa-key" style={{ marginRight: 6 }}></i>Esqueci minha senha
+                        </button>
+                    </form>
+                )}
+
+                {/* ========== REDEFINIR SENHA ========== */}
+                {modo === 'redefinir' && (
+                    <form onSubmit={handleRedefinirSenha}>
+                        <div style={{ background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, color: '#4FC3F7', fontSize: 12 }}>
+                            <i className="fa-solid fa-circle-info" style={{ marginRight: 6 }}></i>
+                            Informe seu e-mail e o código da sua organização para definir uma nova senha.
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Email</label>
+                            <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="seu@email.com" />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Código da Organização</label>
+                            <input className="form-input" value={codigoOrg} onChange={(e) => setCodigoOrg(e.target.value.toUpperCase())} required placeholder="Ex: A1B2C3D4"
+                                style={{ letterSpacing: '3px', textAlign: 'center', fontWeight: 700, fontSize: 18 }} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Nova Senha <span style={{ color: '#666', fontSize: 11 }}>(mínimo 6 caracteres)</span></label>
+                            <input className="form-input" type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} required minLength={6} placeholder="••••••••" />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Confirmar Nova Senha</label>
+                            <input className="form-input" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} required minLength={6} placeholder="••••••••" />
+                        </div>
+                        <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={carregando}>
+                            {carregando ? 'Redefinindo...' : 'Redefinir Senha'}
                         </button>
                     </form>
                 )}
@@ -142,31 +182,6 @@ export default function LoginPage() {
                     </form>
                 )}
 
-                {/* ========== NOVA ORGANIZACAO ========== */}
-                {modo === 'nova_org' && (
-                    <form onSubmit={handleNovaOrg}>
-                        <div className="form-group">
-                            <label className="form-label">Nome da Empresa</label>
-                            <input className="form-input" value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} required placeholder="Ex: FATEC Praia Grande" />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Email do Super Admin</label>
-                            <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="admin@empresa.com" />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Senha</label>
-                            <input className="form-input" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="••••••••" />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Logo da Empresa (opcional)</label>
-                            <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files[0])} style={{ color: '#a0a0b0' }} />
-                        </div>
-                        <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={carregando}>
-                            {carregando ? 'Criando...' : 'Criar Organizacao'}
-                        </button>
-                    </form>
-                )}
-
                 {/* ========== BOTOES DE MODO ========== */}
                 <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {modo !== 'login' && (
@@ -178,20 +193,12 @@ export default function LoginPage() {
                         </button>
                     )}
                     {modo === 'login' && (
-                        <>
-                            <button
-                                onClick={() => { setModo('cadastro_id'); setErro(''); }}
-                                style={{ background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.2)', borderRadius: 10, color: 'var(--cor-primaria)', cursor: 'pointer', padding: '10px', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}
-                            >
-                                <i className="fa-solid fa-key"></i> Cadastrar com ID da Organizacao
-                            </button>
-                            <button
-                                onClick={() => { setModo('nova_org'); setErro(''); }}
-                                style={{ background: 'rgba(107,203,119,0.1)', border: '1px solid rgba(107,203,119,0.2)', borderRadius: 10, color: '#6BCB77', cursor: 'pointer', padding: '10px', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}
-                            >
-                                <i className="fa-solid fa-building"></i> Sou Novo Na Plataforma
-                            </button>
-                        </>
+                        <button
+                            onClick={() => { setModo('cadastro_id'); setErro(''); }}
+                            style={{ background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.2)', borderRadius: 10, color: 'var(--cor-primaria)', cursor: 'pointer', padding: '10px', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}
+                        >
+                            <i className="fa-solid fa-key"></i> Cadastrar com ID da Organizacao
+                        </button>
                     )}
                 </div>
             </div>

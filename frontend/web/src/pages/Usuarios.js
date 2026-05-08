@@ -7,7 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
     registrarUsuario, editarUsuario, alterarSenha,
-    statsUsuario, excluirUsuario, getUser, getOrg, API_URL
+    statsUsuario, excluirUsuario, getUser, getOrg, API_URL,
+    uploadImagem, atualizarLogoOrg
 } from '../services/api';
 import api from '../services/api';
 
@@ -20,6 +21,10 @@ export default function UsuariosPage() {
     const [qrModal, setQrModal] = useState(false);
     const [senhaModal, setSenhaModal] = useState(false);
     const [deleteModal, setDeleteModal] = useState(null);
+    const [logoModal, setLogoModal] = useState(false);
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState(null);
+    const [enviandoLogo, setEnviandoLogo] = useState(false);
     const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'USUARIO', habilidades: [], max_tickets: 10 });
     const [editForm, setEditForm] = useState({ nome: '', role: '', habilidades: [], max_tickets: 10 });
     const [filtroRoles, setFiltroRoles] = useState(['USUARIO', 'TECNICO', 'ADMIN']);
@@ -136,7 +141,9 @@ export default function UsuariosPage() {
         } catch { alert('Erro ao carregar stats'); }
     };
 
-    const qrUrl = org ? `tiresolve://registro/${org.codigo_acesso}` : '';
+    // Gera uma URL web valida que qualquer leitor de QR consegue abrir.
+    // Ao abrir, o Login.js detecta ?org=CODIGO e pre-preenche o cadastro.
+    const qrUrl = org ? `${window.location.origin}/login?org=${org.codigo_acesso}` : '';
 
     return (
         <div className="animate-in">
@@ -151,6 +158,9 @@ export default function UsuariosPage() {
                     </button>
                     {user?.role === 'ADMIN' && (
                         <>
+                            <button className="btn" onClick={() => { setLogoModal(true); setLogoFile(null); setLogoPreview(org?.logo_url ? `${API_URL}${org.logo_url}` : null); }} style={{ background: 'rgba(108,99,255,0.15)', color: '#6C63FF' }}>
+                                <i className="fa-solid fa-image"></i> Logo
+                            </button>
                             <button className="btn" onClick={() => setQrModal(true)} style={{ background: 'rgba(107,203,119,0.15)', color: '#6BCB77' }}>
                                 <i className="fa-solid fa-qrcode"></i> Gerar QR Code
                             </button>
@@ -422,6 +432,57 @@ export default function UsuariosPage() {
                         <div className="modal-actions">
                             <button type="button" className="btn btn-primary" onClick={() => setDeleteModal(null)}>Cancelar</button>
                             <button type="button" className="btn btn-danger" onClick={() => handleExcluir(deleteModal.id)}>Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Logo */}
+            {logoModal && (
+                <div className="modal-overlay" onClick={() => setLogoModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, textAlign: 'center' }}>
+                        <h2 className="modal-title"><i className="fa-solid fa-image"></i> Logo da Empresa</h2>
+                        <p style={{ color: '#a0a0b0', fontSize: 13, margin: '0 0 20px' }}>
+                            Selecione uma imagem para a logo de <b style={{ color: '#fff' }}>{org?.nome}</b>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                            {logoPreview && (
+                                <img src={logoPreview} alt="Preview logo" style={{
+                                    width: 80, height: 80, borderRadius: 12, objectFit: 'cover',
+                                    border: '3px solid var(--cor-borda)', background: 'var(--cor-superficie)'
+                                }} />
+                            )}
+                            <label style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px',
+                                borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                                background: 'rgba(108,99,255,0.1)', color: '#6C63FF',
+                                border: '2px dashed rgba(108,99,255,0.4)', transition: 'all .2s'
+                            }}>
+                                <i className="fa-solid fa-cloud-arrow-up"></i>
+                                {logoFile ? logoFile.name : 'Selecionar imagem'}
+                                <input type="file" accept="image/*" onChange={(e) => {
+                                    const f = e.target.files[0];
+                                    if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)); }
+                                }} style={{ display: 'none' }} />
+                            </label>
+                        </div>
+                        <div className="modal-actions" style={{ marginTop: 20 }}>
+                            <button type="button" className="btn btn-danger" onClick={() => setLogoModal(false)}>Cancelar</button>
+                            <button type="button" className="btn btn-primary" disabled={!logoFile || enviandoLogo} onClick={async () => {
+                                setEnviandoLogo(true);
+                                try {
+                                    const up = await uploadImagem(logoFile);
+                                    const orgAtualizada = await atualizarLogoOrg(up.url);
+                                    localStorage.setItem('tiresolve_org', JSON.stringify(orgAtualizada));
+                                    setLogoModal(false);
+                                    window.location.reload();
+                                } catch (err) {
+                                    alert(err.response?.data?.detail || 'Erro ao atualizar logo.');
+                                }
+                                setEnviandoLogo(false);
+                            }}>
+                                {enviandoLogo ? 'Salvando...' : 'Salvar Logo'}
+                            </button>
                         </div>
                     </div>
                 </div>

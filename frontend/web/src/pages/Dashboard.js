@@ -3,8 +3,10 @@
  * Exibe indicadores, gráficos de chamados e atividade recente.
  */
 
-import React, { useState, useEffect } from 'react';
-import { listarChamados, listarMaquinas } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { listarChamados, listarMaquinas, getUser } from '../services/api';
+import useWebSocket from '../hooks/useWebSocket';
 import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -20,6 +22,18 @@ export default function DashboardPage() {
     const [chamados, setChamados] = useState([]);
     const [maquinas, setMaquinas] = useState([]);
     const [carregando, setCarregando] = useState(true);
+    const [abertosExpandido, setAbertosExpandido] = useState(true); // accordion principal
+    const [ticketExpandido, setTicketExpandido] = useState(null);   // id do ticket aberto (accordion interno)
+    const user = getUser();
+    const navigate = useNavigate();
+
+    // WebSocket: atualiza dashboard em tempo real
+    const handleWsEvent = useCallback((event) => {
+        if (event.startsWith('chamado_') || event === 'nova_mensagem') {
+            carregarDados();
+        }
+    }, []);
+    useWebSocket(handleWsEvent);
 
     useEffect(() => {
         carregarDados();
@@ -41,7 +55,8 @@ export default function DashboardPage() {
     };
 
     // Contadores
-    const abertos = chamados.filter(c => c.status === 'ABERTO').length;
+    const chamadosAbertos = chamados.filter(c => c.status === 'ABERTO');
+    const abertos = chamadosAbertos.length;
     const emAtendimento = chamados.filter(c => c.status === 'EM_ATENDIMENTO').length;
     const finalizados = chamados.filter(c => c.status === 'FINALIZADO').length;
     const maqOnline = maquinas.filter(m => m.ultimo_status === 'ONLINE').length;
@@ -70,6 +85,144 @@ export default function DashboardPage() {
                 <h1 className="page-title">Dashboard</h1>
                 <p className="page-subtitle">Visão geral do sistema de chamados e infraestrutura</p>
             </div>
+
+            {/* Alerta de tickets ABERTOS (accordion) — apenas ADMIN */}
+            {user?.role === 'ADMIN' && (
+                <div className="alerta-abertos">
+                    <div
+                        className="alerta-abertos-titulo"
+                        onClick={() => setAbertosExpandido(v => !v)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
+                        title={abertosExpandido ? 'Recolher' : 'Expandir'}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <i className="fa-solid fa-circle-exclamation"></i>
+                            {abertos > 0
+                                ? `${abertos} chamado${abertos !== 1 ? 's' : ''} aguardando atendimento`
+                                : 'Nenhum chamado aberto no momento'}
+                        </span>
+                        <i
+                            className={`fa-solid fa-chevron-down`}
+                            style={{
+                                transition: 'transform .2s',
+                                transform: abertosExpandido ? 'rotate(180deg)' : 'rotate(0deg)',
+                                fontSize: 14,
+                                animation: 'none'
+                            }}
+                        ></i>
+                    </div>
+                    {abertosExpandido && (
+                        <div className="alerta-abertos-lista">
+                            {chamadosAbertos.length === 0 ? (
+                                <div className="alerta-vazio">
+                                    <i className="fa-solid fa-check-circle" style={{ color: '#6BCB77', marginRight: 6 }}></i>
+                                    Todos os chamados estão em atendimento ou finalizados
+                                </div>
+                            ) : (
+                                chamadosAbertos.map(c => {
+                                    const expandido = ticketExpandido === c.id;
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            style={{
+                                                background: 'rgba(255,107,107,0.08)',
+                                                border: '1px solid rgba(255,107,107,0.25)',
+                                                borderRadius: 10,
+                                                overflow: 'hidden',
+                                                transition: 'all .2s',
+                                            }}
+                                        >
+                                            {/* Cabeçalho do accordion */}
+                                            <div
+                                                onClick={() => setTicketExpandido(expandido ? null : c.id)}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 12,
+                                                    padding: '10px 14px', cursor: 'pointer',
+                                                    background: expandido ? 'rgba(255,107,107,0.12)' : 'transparent',
+                                                    transition: 'background .15s',
+                                                }}
+                                                title={expandido ? 'Recolher detalhes' : 'Ver detalhes'}
+                                            >
+                                                <span className="alerta-ticket-id">#{c.id}</span>
+                                                <span className="alerta-ticket-titulo">{c.titulo}</span>
+                                                <span className="alerta-ticket-meta">
+                                                    <i className="fa-solid fa-tag"></i>
+                                                    {c.categoria}
+                                                </span>
+                                                <span className="alerta-ticket-meta">
+                                                    <i className="fa-solid fa-flag"></i>
+                                                    {c.prioridade}
+                                                </span>
+                                                <span className="alerta-ticket-meta">
+                                                    <i className="fa-solid fa-calendar"></i>
+                                                    {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                                                </span>
+                                                <i
+                                                    className="fa-solid fa-chevron-down"
+                                                    style={{
+                                                        marginLeft: 'auto',
+                                                        fontSize: 12,
+                                                        color: '#FF6B6B',
+                                                        transition: 'transform .2s',
+                                                        transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    }}
+                                                ></i>
+                                            </div>
+                                            {/* Corpo expandido */}
+                                            {expandido && (
+                                                <div style={{
+                                                    padding: '14px 16px',
+                                                    borderTop: '1px solid rgba(255,107,107,0.2)',
+                                                    background: 'rgba(0,0,0,0.15)',
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr',
+                                                    gap: 12,
+                                                }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: '#a0a0b0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                                                            Descrição
+                                                        </div>
+                                                        <div style={{ fontSize: 13, color: '#e0e0e0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                                            {c.descricao || <span style={{ color: '#666' }}>Sem descrição</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 11, color: '#a0a0b0', textTransform: 'uppercase', letterSpacing: 0.5 }}>Solicitante</div>
+                                                            <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{c.usuario?.nome || '-'}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: 11, color: '#a0a0b0', textTransform: 'uppercase', letterSpacing: 0.5 }}>Técnico</div>
+                                                            <div style={{ fontSize: 13, color: c.tecnico ? '#fff' : '#FF6B6B', fontWeight: 600 }}>
+                                                                {c.tecnico?.nome || 'Não atribuído'}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: 11, color: '#a0a0b0', textTransform: 'uppercase', letterSpacing: 0.5 }}>Aberto em</div>
+                                                            <div style={{ fontSize: 13, color: '#fff' }}>
+                                                                {new Date(c.created_at).toLocaleString('pt-BR')}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                                        <button
+                                                            className="btn btn-sm btn-primary"
+                                                            onClick={(e) => { e.stopPropagation(); navigate(`/chamados?abrir=${c.id}`); }}
+                                                        >
+                                                            <i className="fa-solid fa-arrow-up-right-from-square" style={{ marginRight: 6 }}></i>
+                                                            Abrir chamado
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Cards de indicadores */}
             <div className="stats-grid">

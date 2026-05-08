@@ -66,3 +66,13 @@ async def require_tecnico_or_admin(
             detail="Acesso restrito a técnicos e administradores"
         )
     return current_user
+
+
+async def require_sysadmin(current_user: User = Depends(get_current_user)) -> User:
+    """Dependência que exige que o usuário seja SYSADMIN."""
+    if current_user.role != Role.SYSADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao administrador do sistema"
+        )
+    return current_user

@@ -47,16 +47,6 @@ export const login = async (email, senha) => {
     return res.data;
 };
 
-export const criarOrganizacao = async (dados) => {
-    const res = await api.post('/auth/criar-organizacao', dados);
-    localStorage.setItem('tiresolve_token', res.data.access_token);
-    localStorage.setItem('tiresolve_user', JSON.stringify(res.data.user));
-    if (res.data.organizacao) {
-        localStorage.setItem('tiresolve_org', JSON.stringify(res.data.organizacao));
-    }
-    return res.data;
-};
-
 export const registrarComID = async (dados) => {
     const res = await api.post('/auth/registrar-com-id', dados);
     localStorage.setItem('tiresolve_token', res.data.access_token);
@@ -188,6 +178,24 @@ export const atualizarItemInventario = (id, dados) =>
 export const deletarItemInventario = (id) =>
     api.delete(`/inventario/${id}`);
 
+// Baixa o agent vinculado a um item do inventario (forca download como arquivo).
+export const baixarAgentInventario = async (id) => {
+    const response = await api.get(`/inventario/${id}/download-agent`, {
+        responseType: 'blob',
+    });
+    const cd = response.headers['content-disposition'] || '';
+    const match = cd.match(/filename="?([^";]+)"?/);
+    const filename = match ? match[1] : `tiresolve_agent_inv${id}.py`;
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+};
+
 // ===== USERS =====
 export const registrarUsuario = (dados) =>
     api.post('/auth/register', dados).then(r => r.data);
@@ -198,10 +206,40 @@ export const editarUsuario = (userId, dados) =>
 export const alterarSenha = (senhaAtual, novaSenha) =>
     api.put('/auth/alterar-senha', { senha_atual: senhaAtual, nova_senha: novaSenha }).then(r => r.data);
 
+export const redefinirSenha = (email, codigoOrganizacao, novaSenha) =>
+    api.post('/auth/redefinir-senha', {
+        email,
+        codigo_organizacao: codigoOrganizacao,
+        nova_senha: novaSenha,
+    }).then(r => r.data);
+
 export const statsUsuario = (userId) =>
     api.get(`/auth/users/${userId}/stats`).then(r => r.data);
 
 export const excluirUsuario = (userId) =>
     api.delete(`/auth/users/${userId}`);
+
+// ===== ORGANIZACAO =====
+export const atualizarLogoOrg = (logo_url) =>
+    api.put('/auth/organizacao/logo', { logo_url }).then(r => r.data);
+
+// ===== SYSADMIN =====
+export const sysadminListarOrgs = () =>
+    api.get('/sysadmin/organizacoes').then(r => r.data);
+
+export const sysadminCriarOrg = (dados) =>
+    api.post('/sysadmin/organizacoes', dados).then(r => r.data);
+
+export const sysadminEditarOrg = (id, dados) =>
+    api.put(`/sysadmin/organizacoes/${id}`, dados).then(r => r.data);
+
+export const sysadminDeletarOrg = (id) =>
+    api.delete(`/sysadmin/organizacoes/${id}`);
+
+export const sysadminListarUsuariosOrg = (orgId) =>
+    api.get(`/sysadmin/organizacoes/${orgId}/usuarios`).then(r => r.data);
+
+export const sysadminCriarSysAdmin = (dados) =>
+    api.post('/sysadmin/criar-sysadmin', dados).then(r => r.data);
 
 export default api;

@@ -5,3 +5,8 @@ __pycache__/
 .expo/
 dist/
 build/
+
+# Firebase / FCM credentials
+frontend/mobile/google-services.json
+frontend/mobile/GoogleService-Info.plist
+**/fcm-service-account*.json

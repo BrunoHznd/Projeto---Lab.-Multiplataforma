@@ -30,6 +30,7 @@
       },
       "usesCleartextTraffic": true,
       "package": "br.edu.fatecpg.cisupport",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",

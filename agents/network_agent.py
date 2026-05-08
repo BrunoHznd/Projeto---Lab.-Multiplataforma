@@ -43,6 +43,9 @@ import speedtest
 # ╚═══════════════════════════════════════════════════════╝
 API_URL = "__API_URL__"
 CODIGO_ORGANIZACAO = "COLE_SEU_CODIGO_AQUI"
+# Token (preenchido quando o agent e baixado a partir de um item de Inventario).
+# Quando presente, o backend vincula esta maquina diretamente ao InventarioItem.
+AGENT_TOKEN = "__AGENT_TOKEN__"
 INTERVALO_SEGUNDOS = 300  # 5 minutos (speedtest consome banda)
 
 
@@ -127,8 +130,10 @@ def ciclo():
         "status": "ONLINE" if online else "OFFLINE",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "ip": ip_publico,
-        "codigo_organizacao": CODIGO_ORGANIZACAO
+        "codigo_organizacao": CODIGO_ORGANIZACAO,
     }
+    if AGENT_TOKEN and not AGENT_TOKEN.startswith("__"):
+        dados["agent_token"] = AGENT_TOKEN
 
     try:
         r = http_client.post(API_URL, json=dados, timeout=10)

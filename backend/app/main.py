@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import create_tables
 from app.routers import auth, chamados, logs, monitoramento, upload, inventario, notificacoes
+from app.routers import sysadmin
+from app.routers import ws as ws_router
 
 settings = get_settings()
 
@@ -39,6 +41,8 @@ app.include_router(monitoramento.router)
 app.include_router(upload.router)
 app.include_router(inventario.router)
 app.include_router(notificacoes.router)
+app.include_router(sysadmin.router)
+app.include_router(ws_router.router)
 
 
 @app.on_event("startup")

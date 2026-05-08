@@ -15,32 +15,55 @@ def processar_dados_monitoramento(db: Session, dados: dict) -> Maquina:
     """
     Processa dados recebidos do agent de monitoramento.
     Vincula a máquina à organização via codigo_organizacao.
+    Se o agent enviar agent_token, faz a ligação direta com o InventarioItem
+    (criado a partir do fluxo "Incluir em Infraestrutura"), evitando duplicar.
     """
-    # Busca organizacao pelo codigo
-    org_id = None
-    codigo_org = dados.get("codigo_organizacao")
-    if codigo_org:
-        org = db.query(Organizacao).filter(
-            Organizacao.codigo_acesso == codigo_org.upper()
+    # ===== 1. Resolve via agent_token (caminho preferencial) =====
+    inventario_item: Optional[InventarioItem] = None
+    agent_token = dados.get("agent_token")
+    if agent_token:
+        inventario_item = db.query(InventarioItem).filter(
+            InventarioItem.agent_token == agent_token
         ).first()
-        if org:
-            org_id = org.id
 
-    # Busca maquina existente (por identificador_agente ou fallback pro nome)
-    # O filtro por tipo garante que agent de Rede nunca "cola" em uma maquina de Hardware e vice-versa
-    from sqlalchemy import or_
+    # ===== 2. Determina organizacao =====
+    org_id = None
+    if inventario_item:
+        # Item ja sabe a qual organizacao pertence
+        org_id = inventario_item.organizacao_id
+    else:
+        codigo_org = dados.get("codigo_organizacao")
+        if codigo_org:
+            org = db.query(Organizacao).filter(
+                Organizacao.codigo_acesso == codigo_org.upper()
+            ).first()
+            if org:
+                org_id = org.id
+
+    # ===== 3. Busca a maquina =====
     machine_id = dados["machine_id"]
     tipo_dado = dados.get("tipo", TipoMaquina.HARDWARE)
-    query = db.query(Maquina).filter(
-        or_(
-            Maquina.identificador_agente == machine_id,
-            Maquina.nome == machine_id
-        ),
-        Maquina.tipo == tipo_dado
-    )
-    if org_id:
-        query = query.filter(Maquina.organizacao_id.in_([org_id, None]))
-    maquina = query.first()
+    maquina = None
+
+    if inventario_item:
+        # Se o item ja tem maquina vinculada, usa ela. Senao, ainda assim
+        # tenta encontrar uma maquina existente para vincular (compat. legado).
+        maquina = db.query(Maquina).filter(
+            Maquina.inventario_item_id == inventario_item.id
+        ).first()
+
+    if not maquina:
+        from sqlalchemy import or_
+        query = db.query(Maquina).filter(
+            or_(
+                Maquina.identificador_agente == machine_id,
+                Maquina.nome == machine_id
+            ),
+            Maquina.tipo == tipo_dado
+        )
+        if org_id:
+            query = query.filter(Maquina.organizacao_id.in_([org_id, None]))
+        maquina = query.first()
 
     if maquina:
         if org_id and not maquina.organizacao_id:
@@ -67,8 +90,10 @@ def processar_dados_monitoramento(db: Session, dados: dict) -> Maquina:
         if dados.get("localizacao"):
             maquina.localizacao = dados["localizacao"]
     else:
+        # Se ja temos um InventarioItem ligado pelo token, herda nome dele
+        nome_maquina = inventario_item.nome if inventario_item else machine_id
         maquina = Maquina(
-            nome=machine_id,
+            nome=nome_maquina,
             identificador_agente=machine_id,
             tipo=dados.get("tipo", TipoMaquina.HARDWARE),
             ip=dados.get("ip"),
@@ -79,12 +104,17 @@ def processar_dados_monitoramento(db: Session, dados: dict) -> Maquina:
             upload_speed=dados.get("upload_speed", 0.0) if dados.get("upload_speed") is not None else 0.0,
             ultimo_status=dados.get("status", StatusMaquina.ONLINE),
             ultima_verificacao=datetime.now(),
-            organizacao_id=org_id
+            organizacao_id=org_id,
+            inventario_item_id=inventario_item.id if inventario_item else None,
         )
         db.add(maquina)
 
-        # Auto-criar item no inventario apenas se for HARDWARE
-        if org_id and dados.get("tipo", TipoMaquina.HARDWARE) != TipoMaquina.REDE:
+        # Auto-criar item no inventario apenas se for HARDWARE e nao houver token vinculando.
+        if (
+            inventario_item is None
+            and org_id
+            and dados.get("tipo", TipoMaquina.HARDWARE) != TipoMaquina.REDE
+        ):
             existente_inv = db.query(InventarioItem).filter(
                 InventarioItem.nome == machine_id,
                 InventarioItem.organizacao_id == org_id
@@ -98,6 +128,10 @@ def processar_dados_monitoramento(db: Session, dados: dict) -> Maquina:
                     campos_extras={"Origem": "Agent", "IP": dados.get("ip", "")}
                 )
                 db.add(inv_item)
+                db.flush()
+                maquina.inventario_item_id = inv_item.id
+            else:
+                maquina.inventario_item_id = existente_inv.id
 
     db.commit()
     db.refresh(maquina)

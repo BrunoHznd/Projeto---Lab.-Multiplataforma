@@ -6,7 +6,9 @@
  * - USUARIO: ve apenas os dele, cria novos com imagem
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import useWebSocket from '../hooks/useWebSocket';
 import {
     listarChamados, criarChamado, deletarChamado,
     listarTecnicos, atribuirTecnico, finalizarChamado,
@@ -41,9 +43,29 @@ export default function ChamadosPage() {
     const [novaMensagem, setNovaMensagem] = useState('');
     const [editando, setEditando] = useState(false);
     const [editForm, setEditForm] = useState({ titulo: '', descricao: '' });
+    const [visaoTecnico, setVisaoTecnico] = useState('meus');
 
     const user = getUser();
     const role = user?.role;
+    const location = useLocation();
+    const autoAbrirFeito = useRef(false);
+    const detalheModalRef = useRef(null);
+
+    // Mantém ref sincronizado para uso no callback do WS
+    useEffect(() => { detalheModalRef.current = detalheModal; }, [detalheModal]);
+
+    // WebSocket: atualiza em tempo real
+    const handleWsEvent = useCallback((event, data) => {
+        if (['chamado_criado', 'chamado_atribuido', 'chamado_finalizado',
+             'chamado_editado', 'chamado_atualizado', 'chamado_deletado'].includes(event)) {
+            carregar();
+        }
+        if (event === 'nova_mensagem' && detalheModalRef.current &&
+            detalheModalRef.current.id === data?.chamado_id) {
+            listarMensagens(data.chamado_id).then(setMensagens).catch(() => {});
+        }
+    }, []);
+    useWebSocket(handleWsEvent);
 
     useEffect(() => { carregar(); }, [filtro]);
 
@@ -59,6 +81,16 @@ export default function ChamadosPage() {
         try {
             const dados = await listarChamados(filtro || undefined);
             setChamados(dados);
+            // Auto-abre ticket passado via ?abrir=ID (vindo do Dashboard)
+            if (!autoAbrirFeito.current) {
+                const params = new URLSearchParams(location.search);
+                const abrirId = params.get('abrir');
+                if (abrirId) {
+                    autoAbrirFeito.current = true;
+                    const alvo = dados.find(c => c.id === parseInt(abrirId));
+                    if (alvo) abrirDetalhes(alvo);
+                }
+            }
         } catch (err) { console.error(err); }
         finally { setCarregando(false); }
     };
@@ -182,17 +214,53 @@ export default function ChamadosPage() {
             </div>
 
             {/* Filtros */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-                {['', 'ABERTO', 'EM_ATENDIMENTO', 'FINALIZADO'].map(f => (
-                    <button
-                        key={f}
-                        className={`btn btn-sm ${filtro === f ? 'btn-primary' : ''}`}
-                        style={filtro !== f ? { background: 'var(--cor-card)', color: 'var(--cor-texto-sec)', border: '1px solid var(--cor-borda)' } : {}}
-                        onClick={() => setFiltro(f)}
-                    >
-                        {f ? f.replace('_', ' ') : 'Todos'}
-                    </button>
-                ))}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                    { value: '',               label: 'Todos',          icon: 'fa-list',                color: '#6C63FF' },
+                    { value: 'ABERTO',         label: 'Aberto',         icon: 'fa-circle-exclamation',  color: '#FF6B6B' },
+                    { value: 'EM_ATENDIMENTO', label: 'Em atendimento', icon: 'fa-clock',               color: '#FFD93D' },
+                    { value: 'FINALIZADO',     label: 'Finalizados',    icon: 'fa-circle-check',        color: '#6BCB77' },
+                ].map(f => {
+                    const ativo = filtro === f.value;
+                    return (
+                        <button
+                            key={f.value || 'todos'}
+                            type="button"
+                            onClick={() => setFiltro(f.value)}
+                            style={{
+                                padding: '7px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
+                                border: `1.5px solid ${ativo ? f.color : f.color + '55'}`,
+                                background: ativo ? f.color + '22' : 'transparent',
+                                color: f.color,
+                                fontWeight: ativo ? 700 : 500, transition: 'all .15s',
+                                display: 'inline-flex', alignItems: 'center', gap: 6
+                            }}
+                        >
+                            <i className={`fa-solid ${f.icon}`}></i>
+                            {f.label}
+                        </button>
+                    );
+                })}
+
+                {/* Toggle Meus / Geral — apenas TECNICO */}
+                {role === 'TECNICO' && (
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, background: 'var(--cor-card)', border: '1px solid var(--cor-borda)', borderRadius: 8, padding: 3 }}>
+                        <button
+                            className={`btn btn-sm ${visaoTecnico === 'meus' ? 'btn-primary' : ''}`}
+                            style={visaoTecnico !== 'meus' ? { background: 'transparent', color: 'var(--cor-texto-sec)', border: 'none' } : {}}
+                            onClick={() => setVisaoTecnico('meus')}
+                        >
+                            <i className="fa-solid fa-user" style={{ marginRight: 5 }}></i>Meus Chamados
+                        </button>
+                        <button
+                            className={`btn btn-sm ${visaoTecnico === 'geral' ? 'btn-primary' : ''}`}
+                            style={visaoTecnico !== 'geral' ? { background: 'transparent', color: 'var(--cor-texto-sec)', border: 'none' } : {}}
+                            onClick={() => setVisaoTecnico('geral')}
+                        >
+                            <i className="fa-solid fa-list" style={{ marginRight: 5 }}></i>Geral
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Tabela */}
@@ -212,8 +280,21 @@ export default function ChamadosPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {chamados.map(c => (
-                            <tr key={c.id}>
+                        {(role === 'TECNICO' && visaoTecnico === 'meus'
+                            ? chamados.filter(c => c.tecnico_id === user?.id)
+                            : chamados
+                        ).slice().sort((a, b) => {
+                            const aSem = !a.tecnico_id && a.status === 'ABERTO' ? 1 : 0;
+                            const bSem = !b.tecnico_id && b.status === 'ABERTO' ? 1 : 0;
+                            return bSem - aSem;
+                        }).map(c => {
+                            const semTecnico = !c.tecnico_id && c.status === 'ABERTO';
+                            return (
+                            <tr key={c.id} style={semTecnico ? {
+                                background: 'rgba(255,107,107,0.05)',
+                                borderLeft: '3px solid #FF6B6B',
+                                ...(role !== 'USUARIO' ? { animation: 'piscar-linha 2.5s ease-in-out infinite' } : {})
+                            } : {}}>
                                 <td>
                                     <span onClick={() => abrirDetalhes(c)} style={{ cursor: 'pointer', color: '#6C63FF', fontWeight: 600 }} title="Ver detalhes">#{c.id}</span>
                                 </td>
@@ -236,13 +317,19 @@ export default function ChamadosPage() {
                                 <td>{c.tecnico?.nome || <span style={{ color: '#666' }}>Nao atribuido</span>}</td>
                                 <td>{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
                                 <td style={{ display: 'flex', gap: '4px' }}>
+                                    {/* Badge sem técnico */}
+                                    {semTecnico && role === 'ADMIN' && (
+                                        <span title="Sem técnico" style={{ background: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderRadius: 6, padding: '3px 7px', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                                            <i className="fa-solid fa-triangle-exclamation"></i>
+                                        </span>
+                                    )}
                                     {/* ADMIN: Atribuir tecnico (so se ABERTO) */}
                                     {role === 'ADMIN' && c.status === 'ABERTO' && (
                                         <button
                                             className="btn-icon"
                                             onClick={() => { setAtribuirModal(c); setTecnicoSelecionado(''); }}
                                             title="Atribuir Tecnico"
-                                            style={{ background: 'rgba(108,99,255,0.15)', borderRadius: '6px', padding: '4px 8px' }}
+                                            style={{ background: 'rgba(108,99,255,0.15)', color: '#6C63FF', borderRadius: '6px', padding: '4px 8px' }}
                                         ><i className="fa-solid fa-user-plus"></i></button>
                                     )}
                                     {/* TECNICO: Finalizar (so se atribuido a ele e EM_ATENDIMENTO) */}
@@ -251,12 +338,17 @@ export default function ChamadosPage() {
                                             className="btn-icon"
                                             onClick={() => { setFinalizarModal(c); setResolucao(''); setResolucaoImagem(null); }}
                                             title="Finalizar Chamado"
-                                            style={{ background: 'rgba(107,203,119,0.15)', borderRadius: '6px', padding: '4px 8px' }}
+                                            style={{ background: 'rgba(107,203,119,0.15)', color: '#6BCB77', borderRadius: '6px', padding: '4px 8px' }}
                                         ><i className="fa-solid fa-circle-check"></i></button>
                                     )}
                                     {/* ADMIN: Deletar */}
                                     {role === 'ADMIN' && (
-                                        <button className="btn-icon" onClick={() => handleDeletar(c.id)} title="Excluir"><i className="fa-solid fa-trash"></i></button>
+                                        <button
+                                            className="btn-icon"
+                                            onClick={() => handleDeletar(c.id)}
+                                            title="Excluir"
+                                            style={{ background: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderRadius: '6px', padding: '4px 8px' }}
+                                        ><i className="fa-solid fa-trash"></i></button>
                                     )}
                                     {/* Ver detalhes completos (inclui resolucao) */}
                                     {c.status === 'FINALIZADO' && (
@@ -264,14 +356,22 @@ export default function ChamadosPage() {
                                             className="btn-icon"
                                             onClick={() => abrirDetalhes(c)}
                                             title="Ver Detalhes e Resolucao"
-                                            style={{ background: 'rgba(79,195,247,0.15)', borderRadius: '6px', padding: '4px 8px' }}
+                                            style={{ background: 'rgba(79,195,247,0.15)', color: '#4FC3F7', borderRadius: '6px', padding: '4px 8px' }}
                                         ><i className="fa-solid fa-file-lines"></i></button>
                                     )}
                                 </td>
                             </tr>
-                        ))}
-                        {chamados.length === 0 && (
-                            <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Nenhum chamado encontrado</td></tr>
+                            );
+                        })}
+                        {(role === 'TECNICO' && visaoTecnico === 'meus'
+                            ? chamados.filter(c => c.tecnico_id === user?.id)
+                            : chamados
+                        ).length === 0 && ( 
+                            <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                                {role === 'TECNICO' && visaoTecnico === 'meus'
+                                    ? 'Nenhum chamado atribuído a você'
+                                    : 'Nenhum chamado encontrado'}
+                            </td></tr>
                         )}
                     </tbody>
                 </table>
@@ -309,8 +409,13 @@ export default function ChamadosPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Imagem (opcional)</label>
-                                <input type="file" accept="image/*" onChange={(e) => setImagemFile(e.target.files[0])} style={{ color: '#a0a0b0' }} />
-                                {imagemFile && <p style={{ color: '#6BCB77', fontSize: 12, marginTop: 4 }}>Arquivo: {imagemFile.name}</p>}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                                    <input id="file-img-criar" type="file" accept="image/*" onChange={(e) => setImagemFile(e.target.files[0])} style={{ display: 'none' }} />
+                                    <label htmlFor="file-img-criar" className="btn btn-sm" style={{ cursor: 'pointer', background: 'var(--cor-superficie)', color: 'var(--cor-texto)', border: '1px solid var(--cor-borda)', margin: 0 }}>
+                                        <i className="fa-solid fa-paperclip" style={{ marginRight: 6 }}></i>Escolher arquivo
+                                    </label>
+                                    <span style={{ color: '#a0a0b0', fontSize: 12 }}>{imagemFile ? imagemFile.name : 'Nenhum arquivo escolhido'}</span>
+                                </div>
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn" style={{ background: 'var(--cor-superficie)', color: 'var(--cor-texto-sec)' }} onClick={() => setModal(null)}>Cancelar</button>
@@ -375,13 +480,13 @@ export default function ChamadosPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Foto da resolucao (opcional)</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setResolucaoImagem(e.target.files[0])}
-                                style={{ color: '#a0a0b0' }}
-                            />
-                            {resolucaoImagem && <p style={{ color: '#6BCB77', fontSize: 12, marginTop: 4 }}>Arquivo: {resolucaoImagem.name}</p>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                                <input id="file-resolucao" type="file" accept="image/*" onChange={(e) => setResolucaoImagem(e.target.files[0])} style={{ display: 'none' }} />
+                                <label htmlFor="file-resolucao" className="btn btn-sm" style={{ cursor: 'pointer', background: 'var(--cor-superficie)', color: 'var(--cor-texto)', border: '1px solid var(--cor-borda)', margin: 0 }}>
+                                    <i className="fa-solid fa-camera" style={{ marginRight: 6 }}></i>Escolher arquivo
+                                </label>
+                                <span style={{ color: '#a0a0b0', fontSize: 12 }}>{resolucaoImagem ? resolucaoImagem.name : 'Nenhum arquivo escolhido'}</span>
+                            </div>
                         </div>
                         <div className="modal-actions">
                             <button type="button" className="btn" style={{ background: 'var(--cor-superficie)', color: 'var(--cor-texto-sec)' }} onClick={() => setFinalizarModal(null)}>Cancelar</button>

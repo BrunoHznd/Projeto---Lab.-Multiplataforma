@@ -92,6 +92,10 @@ def migrate():
         ("users", "habilidades", "TEXT"),  # JSON serializado
         ("chamados", "categoria", "VARCHAR(20) DEFAULT 'OUTROS'"),
         ("users", "max_tickets", "INTEGER DEFAULT 10"),
+        # Vinculo Inventario <-> Infraestrutura
+        ("inventario", "agent_token", "VARCHAR(64)"),
+        ("inventario", "tipo_dispositivo", "VARCHAR(20)"),
+        ("maquinas", "inventario_item_id", "INTEGER REFERENCES inventario(id)"),
     ]
 
     for table, column, col_type in migrations:

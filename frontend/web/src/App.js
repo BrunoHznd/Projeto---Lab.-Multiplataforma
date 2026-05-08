@@ -15,6 +15,7 @@ import ChamadosPage from './pages/Chamados';
 import UsuariosPage from './pages/Usuarios';
 import MaquinasPage from './pages/Maquinas';
 import InventarioPage from './pages/Inventario';
+import SysAdminPage from './pages/SysAdmin';
 
 /**
  * Componente de rota protegida.
@@ -23,7 +24,7 @@ function PrivateRoute({ children, allowedRoles }) {
     const user = getUser();
     if (!isAuthenticated()) return <Navigate to="/login" />;
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        return <Navigate to="/dashboard" />;
+        return <Navigate to={getDefaultRoute(user.role)} />;
     }
     return children;
 }
@@ -33,6 +34,7 @@ function PrivateRoute({ children, allowedRoles }) {
  */
 function getLinksForRole(role) {
     const allLinks = [
+        { to: '/sysadmin', icon: 'fa-shield-halved', label: 'Gestão Global', roles: ['SYSADMIN'] },
         { to: '/dashboard', icon: 'fa-chart-bar', label: 'Dashboard', roles: ['ADMIN', 'TECNICO'] },
         { to: '/chamados', icon: 'fa-ticket', label: 'Chamados', roles: ['ADMIN', 'TECNICO', 'USUARIO'] },
         { to: '/usuarios', icon: 'fa-users', label: 'Usuarios', roles: ['ADMIN'] },
@@ -47,6 +49,7 @@ function getLinksForRole(role) {
  */
 function getRoleLabel(role) {
     const labels = {
+        'SYSADMIN': 'Sys Admin',
         'ADMIN': 'Administrador',
         'TECNICO': 'Tecnico',
         'USUARIO': 'Usuario',
@@ -58,6 +61,7 @@ function getRoleLabel(role) {
  * Retorna a rota padrao conforme o role.
  */
 function getDefaultRoute(role) {
+    if (role === 'SYSADMIN') return '/sysadmin';
     if (role === 'USUARIO') return '/chamados';
     return '/dashboard';
 }
@@ -118,16 +122,14 @@ function Layout({ children }) {
             {/* Sidebar */}
             <aside className={`sidebar ${menuAberta ? 'open' : ''}`}>
                 <div className="sidebar-logo">
-                    {org?.logo_url ? (
+                    <h2>tiResolve<span>{org?.nome || 'Centro de Informatica'}</span>{org?.codigo_acesso && <span style={{ fontSize: 10, letterSpacing: 2, opacity: 0.5 }}>ID: {org.codigo_acesso}</span>}</h2>
+                    {org?.logo_url && (
                         <img
                             src={`${API_URL}${org.logo_url}`}
                             alt="Logo"
-                            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', marginLeft: 'auto', flexShrink: 0 }}
                         />
-                    ) : (
-                        <span className="sidebar-logo-icon"><i className="fa-solid fa-desktop"></i></span>
                     )}
-                    <h2>tiResolve<span>{org?.nome || 'Centro de Informatica'}</span>{org?.codigo_acesso && <span style={{ fontSize: 10, letterSpacing: 2, opacity: 0.5 }}>ID: {org.codigo_acesso}</span>}</h2>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -136,7 +138,7 @@ function Layout({ children }) {
                             key={link.to}
                             to={link.to}
                             onClick={() => setMenuAberta(false)}
-                            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''} ${link.to === '/sysadmin' ? 'sysadmin-link' : ''}`}
                         >
                             <span className="sidebar-link-icon"><i className={`fa-solid ${link.icon}`}></i></span>
                             {link.label}
@@ -210,6 +212,13 @@ export default function App() {
                 <Route path="/inventario" element={
                     <PrivateRoute allowedRoles={['ADMIN', 'TECNICO']}>
                         <Layout><InventarioPage /></Layout>
+                    </PrivateRoute>
+                } />
+
+                {/* SysAdmin - Apenas SysAdmin */}
+                <Route path="/sysadmin" element={
+                    <PrivateRoute allowedRoles={['SYSADMIN']}>
+                        <Layout><SysAdminPage /></Layout>
                     </PrivateRoute>
                 } />
 

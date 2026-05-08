@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import User, Role, Organizacao, Chamado, StatusChamado
 from app.schemas import (
     LoginRequest, TokenResponse, UserCreate, UserResponse, UserUpdate,
-    OrganizacaoCreate, OrganizacaoResponse, RegistroComID,
+    OrganizacaoResponse, RegistroComID,
     AlterarSenhaRequest, UserStatsResponse
 )
 from app.services.auth_service import (
@@ -48,46 +48,9 @@ async def login(dados: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/criar-organizacao", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def criar_organizacao(dados: OrganizacaoCreate, db: Session = Depends(get_db)):
-    """Cria uma nova organizacao e o super admin. Fluxo 'Sou Novo Na Plataforma'."""
-    # Verifica se email ja existe
-    user_existente = db.query(User).filter(User.email == dados.email_admin).first()
-    if user_existente:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email ja cadastrado no sistema"
-        )
-
-    # Cria a organizacao
-    nova_org = Organizacao(
-        nome=dados.nome_empresa,
-        logo_url=dados.logo_url
-    )
-    db.add(nova_org)
-    db.flush()  # Pega o ID antes de commit
-
-    # Cria o admin da organizacao
-    novo_admin = User(
-        nome=f"Admin {dados.nome_empresa}",
-        email=dados.email_admin,
-        senha_hash=hash_senha(dados.senha_admin),
-        role=Role.ADMIN,
-        organizacao_id=nova_org.id
-    )
-    db.add(novo_admin)
-    db.commit()
-    db.refresh(nova_org)
-    db.refresh(novo_admin)
-
-    # Gera token
-    token = criar_token_acesso(data={"sub": str(novo_admin.id), "role": Role.ADMIN.value})
-
-    return TokenResponse(
-        access_token=token,
-        user=UserResponse.model_validate(novo_admin),
-        organizacao=OrganizacaoResponse.model_validate(nova_org)
-    )
+# Observacao: o antigo endpoint publico POST /auth/criar-organizacao foi
+# removido. A criacao de novas organizacoes agora e exclusiva do SysAdmin
+# atraves de POST /sysadmin/organizacoes.
 
 
 @router.post("/registrar-com-id", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -227,6 +190,28 @@ async def obter_organizacao(
     return org
 
 
+@router.put("/organizacao/logo", response_model=OrganizacaoResponse)
+async def atualizar_logo_org(
+    dados: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Admin atualiza a logo da organizacao."""
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Apenas administradores")
+    if not current_user.organizacao_id:
+        raise HTTPException(status_code=404, detail="Usuario nao pertence a nenhuma organizacao")
+    org = db.query(Organizacao).filter(Organizacao.id == current_user.organizacao_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organizacao nao encontrada")
+    logo_url = dados.get("logo_url")
+    if logo_url is not None:
+        org.logo_url = logo_url
+    db.commit()
+    db.refresh(org)
+    return org
+
+
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def editar_usuario(
     user_id: int,
@@ -269,6 +254,39 @@ async def editar_usuario(
     db.commit()
     db.refresh(user)
     return UserResponse.model_validate(user)
+
+
+@router.post("/redefinir-senha")
+async def redefinir_senha(dados: dict, db: Session = Depends(get_db)):
+    """Redefine a senha do usuario validando email + codigo da organizacao.
+
+    Body: {email: str, codigo_organizacao: str, nova_senha: str}
+    Fluxo sem e-mail: usuario precisa conhecer o codigo da sua organizacao.
+    SYSADMIN (sem organizacao) nao pode usar este fluxo.
+    """
+    email = (dados.get("email") or "").strip()
+    codigo = (dados.get("codigo_organizacao") or "").strip().upper()
+    nova_senha = dados.get("nova_senha") or ""
+
+    if not email or not codigo or not nova_senha:
+        raise HTTPException(status_code=400, detail="Preencha email, codigo da organizacao e nova senha")
+    if len(nova_senha) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no minimo 6 caracteres")
+
+    org = db.query(Organizacao).filter(Organizacao.codigo_acesso == codigo).first()
+    if not org:
+        raise HTTPException(status_code=400, detail="Email ou codigo da organizacao invalido")
+
+    user = db.query(User).filter(
+        User.email == email,
+        User.organizacao_id == org.id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Email ou codigo da organizacao invalido")
+
+    user.senha_hash = hash_senha(nova_senha)
+    db.commit()
+    return {"detail": "Senha redefinida com sucesso"}
 
 
 @router.put("/alterar-senha")

@@ -11,7 +11,7 @@ import {
 } from '../services/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer
+    Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 const Speedometer = ({ value, label, color }) => {
@@ -286,14 +286,28 @@ export default function MaquinasPage() {
                     {dadosGrafico.length > 0 && (
                         <div className="chart-card" style={{ marginBottom: '24px' }}>
                             <h3 className="chart-title"><i className="fa-solid fa-chart-bar"></i> Média CPU e Memória por Grupo</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={dadosGrafico}>
+                            <ResponsiveContainer width="100%" height={320}>
+                                <BarChart data={dadosGrafico} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                                     <XAxis dataKey="nome" stroke="#a0a0b0" fontSize={11} angle={-30} textAnchor="end" height={60} />
                                     <YAxis stroke="#a0a0b0" fontSize={12} unit="%" />
-                                    <Tooltip contentStyle={{ background: '#16213e', border: '1px solid #2a2a4a', borderRadius: '8px', color: '#fff' }} />
-                                    <Bar dataKey="CPU" fill="#6C63FF" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="Memoria" fill="#FF6B6B" radius={[4, 4, 0, 0]} />
+                                    <Tooltip
+                                        contentStyle={{ background: '#16213e', border: '1px solid #2a2a4a', borderRadius: '8px', color: '#fff' }}
+                                        formatter={(value, name) => [`${value}%`, name === 'Memoria' ? 'Memória' : name]}
+                                    />
+                                    <Legend
+                                        verticalAlign="top"
+                                        height={30}
+                                        iconType="circle"
+                                        wrapperStyle={{ color: '#a0a0b0', fontSize: 12 }}
+                                        formatter={(value) => (
+                                            <span style={{ color: '#e0e0e0' }}>
+                                                {value === 'Memoria' ? 'Memória' : value}
+                                            </span>
+                                        )}
+                                    />
+                                    <Bar dataKey="CPU" name="CPU" fill="#6C63FF" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="Memoria" name="Memória" fill="#FF6B6B" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -355,13 +369,14 @@ export default function MaquinasPage() {
                                         </td>
                                         <td style={{ display: 'flex', gap: '4px' }}>
                                             <button className="btn-icon" onClick={() => abrirHistorico(m)} title="Historico de Chamados"
-                                                style={{ background: 'rgba(79,195,247,0.15)', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-clipboard-list"></i></button>
+                                                style={{ background: 'rgba(79,195,247,0.15)', color: '#4FC3F7', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-clipboard-list"></i></button>
                                             {isAdminOrTec && (
                                                 <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar"
-                                                    style={{ background: 'rgba(108,99,255,0.15)', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-pen"></i></button>
+                                                    style={{ background: 'rgba(108,99,255,0.15)', color: '#6C63FF', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-pen"></i></button>
                                             )}
                                             {user?.role === 'ADMIN' && (
-                                                <button className="btn-icon" onClick={() => handleDeletar(m.id)} title="Remover"><i className="fa-solid fa-trash"></i></button>
+                                                <button className="btn-icon" onClick={() => handleDeletar(m.id)} title="Remover"
+                                                    style={{ background: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-trash"></i></button>
                                             )}
                                         </td>
                                     </tr>
@@ -390,7 +405,7 @@ export default function MaquinasPage() {
                                 <div>
                                     <h3 style={{ fontSize: '20px', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         {m.nome}
-                                        {isAdminOrTec && <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar Nome ou Grupo" style={{ fontSize: '14px', marginTop: '-2px' }}><i className="fa-solid fa-pen"></i></button>}
+                                        {isAdminOrTec && <button className="btn-icon" onClick={() => abrirEditar(m)} title="Editar Nome ou Grupo" style={{ fontSize: '14px', marginTop: '-2px', background: 'rgba(108,99,255,0.15)', color: '#6C63FF', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-pen"></i></button>}
                                     </h3>
                                     <div style={{ color: '#a0a0b0', fontSize: '14px', marginTop: '6px' }}>
                                         {m.grupo && <span style={{background: 'rgba(108,99,255,0.15)', color:'#B388FF', padding:'2px 8px', borderRadius: '4px', fontSize: '12px', marginRight: '10px'}}>{m.grupo.nome}</span>}
@@ -402,7 +417,7 @@ export default function MaquinasPage() {
                                     <span className={`badge badge-${m.ultimo_status.toLowerCase()}`}>
                                         {m.ultimo_status === 'ONLINE' ? <><i className="fa-solid fa-circle" style={{ color: '#6BCB77' }}></i> ONLINE</> : <><i className="fa-solid fa-circle" style={{ color: '#FF6B6B' }}></i> OFFLINE</>}
                                     </span>
-                                    {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => handleDeletar(m.id)}><i className="fa-solid fa-trash"></i></button>}
+                                    {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => handleDeletar(m.id)} title="Remover" style={{ background: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-trash"></i></button>}
                                 </div>
                             </div>
                             
@@ -447,7 +462,7 @@ export default function MaquinasPage() {
                                         <td style={{fontWeight: '600'}}>{g.nome}</td>
                                         <td style={{color: '#a0a0b0'}}>{new Date(g.created_at).toLocaleDateString()}</td>
                                         <td style={{display:'flex', gap:'8px'}}>
-                                            {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => deletarItemGrupo(g.id)}><i className="fa-solid fa-trash"></i> Deletar</button>}
+                                            {user?.role === 'ADMIN' && <button className="btn-icon" onClick={() => deletarItemGrupo(g.id)} title="Deletar Grupo" style={{ background: 'rgba(255,107,107,0.15)', color: '#FF6B6B', borderRadius: '6px', padding: '4px 8px' }}><i className="fa-solid fa-trash"></i> Deletar</button>}
                                         </td>
                                     </tr>
                                 ))}

@@ -246,6 +246,9 @@ class MonitoramentoData(BaseModel):
     ip: Optional[str] = None
     localizacao: Optional[str] = None
     codigo_organizacao: Optional[str] = None
+    # Token gerado quando o agent foi baixado a partir de um item de Inventario.
+    # Quando presente, vincula a Maquina diretamente ao InventarioItem (sem duplicar).
+    agent_token: Optional[str] = None
 
 
 class MaquinaResponse(BaseModel):
@@ -264,6 +267,7 @@ class MaquinaResponse(BaseModel):
     download_speed: float
     upload_speed: float
     ultima_verificacao: Optional[datetime] = None
+    inventario_item_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -296,6 +300,10 @@ class InventarioItemCreate(BaseModel):
     garantia: bool = False
     garantia_ate: Optional[datetime] = None
     campos_extras: Optional[dict[str, Any]] = None
+    # Quando True, gera agent_token e cria placeholder em Infraestrutura.
+    incluir_em_infraestrutura: bool = False
+    # Tipo do agent (HARDWARE ou REDE). Obrigatorio se incluir_em_infraestrutura=True.
+    tipo_dispositivo: Optional[TipoMaquina] = None
 
 
 class InventarioItemUpdate(BaseModel):
@@ -306,6 +314,8 @@ class InventarioItemUpdate(BaseModel):
     garantia: Optional[bool] = None
     garantia_ate: Optional[datetime] = None
     campos_extras: Optional[dict[str, Any]] = None
+    incluir_em_infraestrutura: Optional[bool] = None
+    tipo_dispositivo: Optional[TipoMaquina] = None
 
 
 class InventarioItemResponse(BaseModel):
@@ -318,6 +328,8 @@ class InventarioItemResponse(BaseModel):
     garantia: bool
     garantia_ate: Optional[datetime] = None
     campos_extras: Optional[dict[str, Any]] = None
+    agent_token: Optional[str] = None
+    tipo_dispositivo: Optional[TipoMaquina] = None
     created_at: datetime
     updated_at: datetime
 

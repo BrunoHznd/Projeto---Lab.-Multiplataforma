@@ -1,13 +1,15 @@
 /**
  * tiResolve - Serviço de Configuração de Notificações
- * Configura canal Android e handler de notificações locais.
- * NÃO usa Firebase - trabalha com notificações LOCAIS criadas
- * pelo BackgroundNotificationTask e pelo polling in-app.
+ * Configura canal Android, handler e REGISTRA o Expo Push Token
+ * no backend para receber notificações via FCM/APNs mesmo com
+ * o app fechado.
  */
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { enviarPushToken } from './api';
 
 /**
  * Configura o canal de notificação Android.
@@ -46,8 +48,6 @@ export async function solicitarPermissaoNotificacoes() {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
         }
-
-        if (finalStatus !== 'granted') {
             console.log('Permissão de notificação negada pelo usuário');
             return false;
         }
@@ -80,12 +80,57 @@ export function configurarNotificationHandler() {
 }
 
 /**
- * Inicializa tudo: canal, permissão e handler.
+ * Obtém o Expo Push Token e registra no backend.
+ * Esse token é usado pelo backend para enviar push via FCM/APNs.
+ * Funciona mesmo com o app FECHADO (o SO entrega a notificação).
+ *
+ * @returns {Promise<string|null>} Token Expo registrado ou null em caso de falha
+ */
+export async function registrarPushToken() {
+    try {
+        if (!Device.isDevice) {
+            console.log('[Push] Push tokens requerem dispositivo físico');
+            return null;
+        }
+
+        // projectId vem de app.json -> expo.extra.eas.projectId
+        const projectId =
+            Constants?.expoConfig?.extra?.eas?.projectId ??
+            Constants?.easConfig?.projectId;
+
+        if (!projectId) {
+            console.log('[Push] projectId não encontrado em app.json');
+            return null;
+        }
+
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        const token = tokenData.data;
+
+        if (!token) {
+            console.log('[Push] Token vazio retornado pelo Expo');
+            return null;
+        }
+
+        // Envia ao backend para salvar em users.push_token
+        await enviarPushToken(token);
+        console.log('[Push] Token registrado no backend:', token.slice(0, 30) + '...');
+        return token;
+    } catch (error) {
+        console.log('[Push] Erro ao registrar token:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Inicializa tudo: canal, permissão, handler e registra push token.
  * Chamado após login.
  */
 export async function inicializarNotificacoes() {
     await configurarCanalAndroid();
-    await solicitarPermissaoNotificacoes();
+    const permitido = await solicitarPermissaoNotificacoes();
+    if (permitido) {
+        await registrarPushToken();
+    }
 }
 
 /**

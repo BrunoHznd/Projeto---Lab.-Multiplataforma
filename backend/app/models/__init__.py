@@ -20,6 +20,7 @@ from app.database import Base
 
 class Role(str, enum.Enum):
     """Papeis de usuario no sistema."""
+    SYSADMIN = "SYSADMIN"
     ADMIN = "ADMIN"
     TECNICO = "TECNICO"
     USUARIO = "USUARIO"
@@ -236,11 +237,13 @@ class Maquina(Base):
     upload_speed = Column(Float, default=0.0)    # Em Mbps
     ultima_verificacao = Column(DateTime, nullable=True)
     organizacao_id = Column(Integer, ForeignKey("organizacoes.id"), nullable=True)
+    inventario_item_id = Column(Integer, ForeignKey("inventario.id"), nullable=True, unique=True, index=True)
 
     # Relacionamentos
     organizacao = relationship("Organizacao", back_populates="maquinas")
     grupo = relationship("GrupoMaquina", back_populates="maquinas")
     chamados = relationship("Chamado", back_populates="maquina")
+    inventario_item = relationship("InventarioItem", back_populates="maquina", foreign_keys=[inventario_item_id])
 
 
 class InventarioItem(Base):
@@ -255,11 +258,17 @@ class InventarioItem(Base):
     garantia = Column(Boolean, default=False)
     garantia_ate = Column(DateTime, nullable=True)
     campos_extras = Column(JSON, nullable=True, default=dict)
+    # Token unico para vincular o agent baixado a este item de inventario
+    agent_token = Column(String(64), unique=True, nullable=True, index=True)
+    # Tipo do agent que sera baixado (HARDWARE ou REDE). Quando preenchido,
+    # indica que o item esta marcado para Inclusao em Infraestrutura.
+    tipo_dispositivo = Column(SAEnum(TipoMaquina), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # Relacionamentos
     organizacao = relationship("Organizacao", back_populates="inventario")
+    maquina = relationship("Maquina", back_populates="inventario_item", uselist=False, foreign_keys="Maquina.inventario_item_id")
 
 
 # ==================== NOTIFICAÇÕES ====================

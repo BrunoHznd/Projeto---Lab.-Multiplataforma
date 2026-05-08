@@ -7,13 +7,17 @@
 import React, { useState, useEffect } from 'react';
 import {
     listarInventario, criarItemInventario, atualizarItemInventario,
-    deletarItemInventario, uploadImagem, getUser, API_URL
+    deletarItemInventario, uploadImagem, getUser, API_URL,
+    baixarAgentInventario
 } from '../services/api';
 
 export default function InventarioPage() {
     const [itens, setItens] = useState([]);
     const [modal, setModal] = useState(null); // null | 'criar' | item (editar)
-    const [form, setForm] = useState({ nome: '', descricao: '', garantia: false, garantia_ate: '', campos_extras: {} });
+    const [form, setForm] = useState({
+        nome: '', descricao: '', garantia: false, garantia_ate: '', campos_extras: {},
+        incluir_em_infraestrutura: false, tipo_dispositivo: 'HARDWARE'
+    });
     const [novosCampos, setNovosCampos] = useState([]);
     const [fotoFile, setFotoFile] = useState(null);
     const [enviando, setEnviando] = useState(false);
@@ -28,7 +32,10 @@ export default function InventarioPage() {
     };
 
     const abrirCriar = () => {
-        setForm({ nome: '', descricao: '', garantia: false, garantia_ate: '', campos_extras: {} });
+        setForm({
+            nome: '', descricao: '', garantia: false, garantia_ate: '', campos_extras: {},
+            incluir_em_infraestrutura: false, tipo_dispositivo: 'HARDWARE'
+        });
         setNovosCampos([]);
         setFotoFile(null);
         setModal('criar');
@@ -40,7 +47,9 @@ export default function InventarioPage() {
             descricao: item.descricao || '',
             garantia: item.garantia,
             garantia_ate: item.garantia_ate ? item.garantia_ate.split('T')[0] : '',
-            campos_extras: item.campos_extras || {}
+            campos_extras: item.campos_extras || {},
+            incluir_em_infraestrutura: !!item.agent_token,
+            tipo_dispositivo: item.tipo_dispositivo || 'HARDWARE'
         });
         setNovosCampos(Object.entries(item.campos_extras || {}).map(([chave, valor]) => ({ chave, valor })));
         setFotoFile(null);
@@ -75,7 +84,9 @@ export default function InventarioPage() {
                 foto_url: fotoUrl,
                 garantia: form.garantia,
                 garantia_ate: form.garantia && form.garantia_ate ? new Date(form.garantia_ate).toISOString() : null,
-                campos_extras: extras
+                campos_extras: extras,
+                incluir_em_infraestrutura: form.incluir_em_infraestrutura,
+                tipo_dispositivo: form.incluir_em_infraestrutura ? form.tipo_dispositivo : null
             };
 
             if (modal === 'criar') {
@@ -89,6 +100,14 @@ export default function InventarioPage() {
             alert(err.response?.data?.detail || 'Erro ao salvar');
         }
         setEnviando(false);
+    };
+
+    const handleBaixarAgent = async (item) => {
+        try {
+            await baixarAgentInventario(item.id);
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Erro ao baixar agent');
+        }
     };
 
     const handleDeletar = async (id) => {
@@ -151,6 +170,11 @@ export default function InventarioPage() {
                                     ) : '-'}
                                 </td>
                                 <td>
+                                    {item.agent_token && (
+                                        <button className="btn-icon" onClick={() => handleBaixarAgent(item)} title={`Baixar Agent (${item.tipo_dispositivo})`} style={{ color: '#6BCB77' }}>
+                                            <i className="fa-solid fa-download"></i>
+                                        </button>
+                                    )}
                                     <button className="btn-icon" onClick={() => abrirEditar(item)} title="Editar"><i className="fa-solid fa-pen"></i></button>
                                     {role === 'ADMIN' && (
                                         <button className="btn-icon" onClick={() => handleDeletar(item.id)} title="Remover"><i className="fa-solid fa-trash"></i></button>
@@ -181,7 +205,13 @@ export default function InventarioPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Foto</label>
-                                <input type="file" accept="image/*" onChange={e => setFotoFile(e.target.files[0])} style={{ color: '#a0a0b0' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                                    <input id="file-foto-inv" type="file" accept="image/*" onChange={e => setFotoFile(e.target.files[0])} style={{ display: 'none' }} />
+                                    <label htmlFor="file-foto-inv" className="btn btn-sm" style={{ cursor: 'pointer', background: 'var(--cor-superficie)', color: 'var(--cor-texto)', border: '1px solid var(--cor-borda)', margin: 0 }}>
+                                        <i className="fa-solid fa-camera" style={{ marginRight: 6 }}></i>Escolher arquivo
+                                    </label>
+                                    <span style={{ color: '#a0a0b0', fontSize: 12 }}>{fotoFile ? fotoFile.name : 'Nenhum arquivo escolhido'}</span>
+                                </div>
                                 {modal !== 'criar' && modal.foto_url && !fotoFile && (
                                     <img src={`${API_URL}${modal.foto_url}`} alt="" style={{ width: 60, height: 60, borderRadius: 8, marginTop: 8, objectFit: 'cover' }} />
                                 )}
@@ -195,6 +225,36 @@ export default function InventarioPage() {
                                 </label>
                                 {form.garantia && (
                                     <input type="date" className="form-input" style={{ width: 180 }} value={form.garantia_ate} onChange={e => setForm({ ...form, garantia_ate: e.target.value })} placeholder="Ate quando" />
+                                )}
+                            </div>
+
+                            {/* Inclusao em Infraestrutura */}
+                            <div className="form-group" style={{ background: 'rgba(108,99,255,0.06)', border: '1px solid rgba(108,99,255,0.25)', borderRadius: 8, padding: 12 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={form.incluir_em_infraestrutura}
+                                        onChange={e => setForm({ ...form, incluir_em_infraestrutura: e.target.checked })}
+                                    />
+                                    <i className="fa-solid fa-network-wired" style={{ color: '#6C63FF' }}></i>
+                                    Incluir em Infraestrutura (este item baixa um Agent)
+                                </label>
+                                {form.incluir_em_infraestrutura && (
+                                    <div style={{ marginTop: 10 }}>
+                                        <label className="form-label" style={{ fontSize: 11 }}>Tipo de Agent</label>
+                                        <select
+                                            className="form-input"
+                                            value={form.tipo_dispositivo}
+                                            onChange={e => setForm({ ...form, tipo_dispositivo: e.target.value })}
+                                        >
+                                            <option value="HARDWARE">Hardware (CPU, memoria, ping)</option>
+                                            <option value="REDE">Rede (download/upload, speedtest)</option>
+                                        </select>
+                                        <p style={{ fontSize: 11, color: '#a0a0b0', marginTop: 6, marginBottom: 0 }}>
+                                            Apos salvar, use o botao <i className="fa-solid fa-download"></i> na lista para baixar o agent vinculado a este item.
+                                            Quando ele for executado, sera identificado automaticamente sem criar duplicidade.
+                                        </p>
+                                    </div>
                                 )}
                             </div>
 

@@ -146,5 +146,5 @@ export async function cancelarBackgroundTask() {
  * Atualiza a contagem salva (sincroniza com polling em foreground).
  */
 export async function sincronizarContagem(count) {
-    await AsyncStorage.setItem(LAST_BG_COUNT_KEY, String(count));rq3qrqrq
+    await AsyncStorage.setItem(LAST_BG_COUNT_KEY, String(count));
 }
