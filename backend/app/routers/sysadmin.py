@@ -11,7 +11,10 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import User, Role, Organizacao, Chamado, StatusChamado
+from app.models import (
+    User, Role, Organizacao, Chamado, StatusChamado,
+    Maquina, InventarioItem, GrupoMaquina, LogChamado, Notificacao,
+)
 from app.schemas import OrganizacaoResponse, UserResponse
 from app.services.auth_service import hash_senha, criar_token_acesso
 from app.utils.dependencies import require_sysadmin
@@ -184,10 +187,33 @@ async def deletar_organizacao(
     db: Session = Depends(get_db),
     _: User = Depends(require_sysadmin)
 ):
-    """Remove uma organização e todos os seus dados."""
+    """Remove uma organização e todos os seus dados (cascade manual).
+
+    Ordem: notificacoes -> logs -> chamados -> maquinas -> inventario ->
+    grupos -> usuarios -> organizacao. Respeita as FKs sem precisar de
+    ON DELETE CASCADE no schema (importante p/ SQLite).
+    """
     org = db.query(Organizacao).filter(Organizacao.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organização não encontrada")
+
+    user_ids = [u.id for u in db.query(User.id).filter(User.organizacao_id == org_id).all()]
+    chamado_ids = [c.id for c in db.query(Chamado.id).filter(Chamado.organizacao_id == org_id).all()]
+
+    if user_ids or chamado_ids:
+        db.query(Notificacao).filter(
+            (Notificacao.user_id.in_(user_ids) if user_ids else False) |
+            (Notificacao.chamado_id.in_(chamado_ids) if chamado_ids else False)
+        ).delete(synchronize_session=False)
+
+    if chamado_ids:
+        db.query(LogChamado).filter(LogChamado.chamado_id.in_(chamado_ids)).delete(synchronize_session=False)
+
+    db.query(Chamado).filter(Chamado.organizacao_id == org_id).delete(synchronize_session=False)
+    db.query(Maquina).filter(Maquina.organizacao_id == org_id).delete(synchronize_session=False)
+    db.query(InventarioItem).filter(InventarioItem.organizacao_id == org_id).delete(synchronize_session=False)
+    db.query(GrupoMaquina).filter(GrupoMaquina.organizacao_id == org_id).delete(synchronize_session=False)
+    db.query(User).filter(User.organizacao_id == org_id).delete(synchronize_session=False)
     db.delete(org)
     db.commit()
     return
@@ -227,6 +253,29 @@ async def criar_sysadmin(
     db.commit()
     db.refresh(novo)
     return UserResponse.model_validate(novo)
+
+
+class TrocarSenhaUsuarioRequest(BaseModel):
+    """SYSADMIN troca a senha de qualquer usuário (tipicamente do Admin da org)."""
+    nova_senha: str
+
+
+@router.put("/usuarios/{user_id}/senha")
+async def sysadmin_trocar_senha_usuario(
+    user_id: int,
+    dados: TrocarSenhaUsuarioRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_sysadmin)
+):
+    """SYSADMIN redefine a senha de qualquer usuário do sistema."""
+    if len(dados.nova_senha) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no mínimo 6 caracteres")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    user.senha_hash = hash_senha(dados.nova_senha)
+    db.commit()
+    return {"detail": "Senha alterada com sucesso"}
 
 
 @router.get("/me", response_model=UserResponse)

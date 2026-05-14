@@ -196,6 +196,20 @@ export const baixarAgentInventario = async (id) => {
     window.URL.revokeObjectURL(url);
 };
 
+// Categorias de Inventario
+export const listarCategoriasInventario = () =>
+    api.get('/inventario/categorias').then(r => r.data);
+
+export const criarCategoriaInventario = (dados) =>
+    api.post('/inventario/categorias', dados).then(r => r.data);
+
+export const deletarCategoriaInventario = (id) =>
+    api.delete(`/inventario/categorias/${id}`);
+
+// Marcar equipamento como Em Manutencao (via chamado)
+export const marcarManutencao = (chamadoId, motivo) =>
+    api.put(`/chamados/${chamadoId}/manutencao`, { motivo }).then(r => r.data);
+
 // ===== USERS =====
 export const registrarUsuario = (dados) =>
     api.post('/auth/register', dados).then(r => r.data);
@@ -219,6 +233,10 @@ export const statsUsuario = (userId) =>
 export const excluirUsuario = (userId) =>
     api.delete(`/auth/users/${userId}`);
 
+// ADMIN troca a senha de qualquer usuario da propria organizacao
+export const adminTrocarSenhaUsuario = (userId, novaSenha) =>
+    api.put(`/auth/users/${userId}/senha`, { nova_senha: novaSenha }).then(r => r.data);
+
 // ===== ORGANIZACAO =====
 export const atualizarLogoOrg = (logo_url) =>
     api.put('/auth/organizacao/logo', { logo_url }).then(r => r.data);
@@ -241,5 +259,9 @@ export const sysadminListarUsuariosOrg = (orgId) =>
 
 export const sysadminCriarSysAdmin = (dados) =>
     api.post('/sysadmin/criar-sysadmin', dados).then(r => r.data);
+
+// SYSADMIN troca a senha de qualquer usuario (tipicamente do Admin de uma org)
+export const sysadminTrocarSenhaUsuario = (userId, novaSenha) =>
+    api.put(`/sysadmin/usuarios/${userId}/senha`, { nova_senha: novaSenha }).then(r => r.data);
 
 export default api;

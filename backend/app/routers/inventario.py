@@ -1,6 +1,6 @@
 """
 tiResolve - Router de Inventario
-CRUD de itens de inventario com campos dinamicos e garantia.
+CRUD de itens de inventario com campos dinamicos, garantia, categorias, marca e estado.
 """
 
 import os
@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import (
-    User, Role, InventarioItem, Maquina, StatusMaquina, TipoMaquina, Organizacao
+    User, Role, InventarioItem, Maquina, StatusMaquina, TipoMaquina,
+    Organizacao, CategoriaInventario, EstadoInventario
 )
 from app.schemas import (
-    InventarioItemCreate, InventarioItemUpdate, InventarioItemResponse
+    InventarioItemCreate, InventarioItemUpdate, InventarioItemResponse,
+    CategoriaInventarioCreate, CategoriaInventarioResponse
 )
 from app.utils.dependencies import get_current_user
 
@@ -35,6 +37,89 @@ def _construir_api_url(request: Request) -> str:
     return f"{scheme}://{host}/api/monitoramento"
 
 
+def _item_to_response(item: InventarioItem) -> dict:
+    """Converte um InventarioItem para dict com categoria_nome populado."""
+    data = InventarioItemResponse.model_validate(item).model_dump()
+    if item.categoria_rel:
+        data["categoria_nome"] = item.categoria_rel.nome
+    return data
+
+
+# ================ CATEGORIAS ================
+
+@router.get("/categorias", response_model=list[CategoriaInventarioResponse])
+async def listar_categorias(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lista categorias de inventario da organizacao."""
+    if current_user.role not in [Role.ADMIN, Role.TECNICO]:
+        raise HTTPException(status_code=403, detail="Acesso restrito")
+    if not current_user.organizacao_id:
+        raise HTTPException(status_code=400, detail="Usuario nao pertence a nenhuma organizacao")
+    return db.query(CategoriaInventario).filter(
+        CategoriaInventario.organizacao_id == current_user.organizacao_id
+    ).order_by(CategoriaInventario.nome.asc()).all()
+
+
+@router.post("/categorias", response_model=CategoriaInventarioResponse, status_code=201)
+async def criar_categoria(
+    dados: CategoriaInventarioCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Cria uma nova categoria de inventario."""
+    if current_user.role not in [Role.ADMIN, Role.TECNICO]:
+        raise HTTPException(status_code=403, detail="Acesso restrito")
+    if not current_user.organizacao_id:
+        raise HTTPException(status_code=400, detail="Usuario nao pertence a nenhuma organizacao")
+
+    # Verifica duplicata
+    existente = db.query(CategoriaInventario).filter(
+        CategoriaInventario.organizacao_id == current_user.organizacao_id,
+        CategoriaInventario.nome == dados.nome.strip()
+    ).first()
+    if existente:
+        raise HTTPException(status_code=400, detail="Categoria ja existe")
+
+    cat = CategoriaInventario(
+        nome=dados.nome.strip(),
+        organizacao_id=current_user.organizacao_id
+    )
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
+@router.delete("/categorias/{cat_id}", status_code=204)
+async def deletar_categoria(
+    cat_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Remove uma categoria de inventario. Apenas ADMIN."""
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Apenas admin pode remover categorias")
+
+    cat = db.query(CategoriaInventario).filter(
+        CategoriaInventario.id == cat_id,
+        CategoriaInventario.organizacao_id == current_user.organizacao_id
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Categoria nao encontrada")
+
+    # Desvincula itens da categoria antes de deletar
+    db.query(InventarioItem).filter(
+        InventarioItem.categoria_inventario_id == cat_id
+    ).update({InventarioItem.categoria_inventario_id: None})
+
+    db.delete(cat)
+    db.commit()
+
+
+# ================ ITENS ================
+
 @router.get("", response_model=list[InventarioItemResponse])
 async def listar_inventario(
     db: Session = Depends(get_db),
@@ -45,9 +130,18 @@ async def listar_inventario(
         raise HTTPException(status_code=403, detail="Acesso restrito")
     if not current_user.organizacao_id:
         raise HTTPException(status_code=400, detail="Usuario nao pertence a nenhuma organizacao. Crie ou entre em uma primeiro.")
-    return db.query(InventarioItem).filter(
+    itens = db.query(InventarioItem).filter(
         InventarioItem.organizacao_id == current_user.organizacao_id
     ).order_by(InventarioItem.created_at.desc()).all()
+
+    # Popula categoria_nome manualmente
+    result = []
+    for item in itens:
+        data = InventarioItemResponse.model_validate(item)
+        if item.categoria_rel:
+            data.categoria_nome = item.categoria_rel.nome
+        result.append(data)
+    return result
 
 
 @router.post("", response_model=InventarioItemResponse, status_code=201)
@@ -72,9 +166,15 @@ async def criar_item(
         nome=dados.nome,
         descricao=dados.descricao,
         foto_url=dados.foto_url,
-        garantia=dados.garantia,
+        data_compra=dados.data_compra,
         garantia_ate=dados.garantia_ate,
-        campos_extras=dados.campos_extras or {}
+        # Mantido por compatibilidade: TRUE se houver data fim de garantia.
+        garantia=dados.garantia_ate is not None,
+        campos_extras=dados.campos_extras or {},
+        # Novos campos
+        categoria_inventario_id=dados.categoria_inventario_id,
+        marca=dados.marca,
+        estado=dados.estado,
     )
     if dados.incluir_em_infraestrutura:
         item.agent_token = secrets.token_urlsafe(24)
@@ -95,7 +195,11 @@ async def criar_item(
 
     db.commit()
     db.refresh(item)
-    return item
+
+    resp = InventarioItemResponse.model_validate(item)
+    if item.categoria_rel:
+        resp.categoria_nome = item.categoria_rel.nome
+    return resp
 
 
 @router.get("/{item_id}", response_model=InventarioItemResponse)
@@ -113,7 +217,11 @@ async def obter_item(
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item nao encontrado")
-    return item
+
+    resp = InventarioItemResponse.model_validate(item)
+    if item.categoria_rel:
+        resp.categoria_nome = item.categoria_rel.nome
+    return resp
 
 
 @router.put("/{item_id}", response_model=InventarioItemResponse)
@@ -141,6 +249,14 @@ async def atualizar_item(
     for campo, valor in payload.items():
         setattr(item, campo, valor)
 
+    # Mantem flag legada `garantia` coerente com `garantia_ate`.
+    if "garantia_ate" in payload:
+        item.garantia = item.garantia_ate is not None
+
+    # Se o estado mudou para algo diferente de EM_MANUTENCAO, limpa o motivo
+    if "estado" in payload and payload["estado"] != EstadoInventario.EM_MANUTENCAO:
+        item.motivo_manutencao = None
+
     # Se o usuario acabou de marcar "Incluir em Infraestrutura", gera token e
     # cria a maquina vinculada (caso ainda nao exista).
     if incluir is True:
@@ -164,14 +280,22 @@ async def atualizar_item(
             )
             db.add(maquina)
     elif incluir is False:
-        # Desmarcou: limpa o token (mantem a maquina, ela nao recebera mais dados via token).
+        # Desmarcou: limpa o token e remove a maquina vinculada da infraestrutura.
         item.agent_token = None
+        item.tipo_dispositivo = None
+        maquina_vinculada = db.query(Maquina).filter(Maquina.inventario_item_id == item.id).first()
+        if maquina_vinculada:
+            db.delete(maquina_vinculada)
     elif tipo_disp is not None:
         item.tipo_dispositivo = tipo_disp
 
     db.commit()
     db.refresh(item)
-    return item
+
+    resp = InventarioItemResponse.model_validate(item)
+    if item.categoria_rel:
+        resp.categoria_nome = item.categoria_rel.nome
+    return resp
 
 
 @router.delete("/{item_id}", status_code=204)

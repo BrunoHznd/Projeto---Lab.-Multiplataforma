@@ -5,6 +5,7 @@ Endpoints de login, registro, criacao de organizacao e cadastro com ID.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import User, Role, Organizacao, Chamado, StatusChamado
@@ -300,6 +301,34 @@ async def alterar_senha(
         raise HTTPException(status_code=400, detail="Senha atual incorreta")
 
     current_user.senha_hash = hash_senha(dados.nova_senha)
+    db.commit()
+    return {"detail": "Senha alterada com sucesso"}
+
+
+class AdminTrocarSenhaRequest(BaseModel):
+    """ADMIN troca a senha de um usuário da própria organização."""
+    nova_senha: str
+
+
+@router.put("/users/{user_id}/senha")
+async def admin_trocar_senha_usuario(
+    user_id: int,
+    dados: AdminTrocarSenhaRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """ADMIN redefine a senha de qualquer usuário da própria organização."""
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem alterar senhas de outros usuários")
+    if len(dados.nova_senha) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no mínimo 6 caracteres")
+    user = db.query(User).filter(
+        User.id == user_id,
+        User.organizacao_id == current_user.organizacao_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    user.senha_hash = hash_senha(dados.nova_senha)
     db.commit()
     return {"detail": "Senha alterada com sucesso"}
 

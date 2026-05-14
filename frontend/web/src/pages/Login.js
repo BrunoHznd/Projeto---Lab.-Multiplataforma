@@ -119,7 +119,7 @@ export default function LoginPage() {
                         <button
                             type="button"
                             onClick={() => { setModo('redefinir'); setErro(''); setSucesso(''); }}
-                            style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--cor-primaria)', cursor: 'pointer', fontSize: 13, width: '100%', textAlign: 'center', fontFamily: 'inherit' }}
+                            style={{ marginTop: 12, background: 'rgba(255,217,61,0.12)', border: '1px solid rgba(255,217,61,0.25)', borderRadius: 10, color: '#FFD93D', cursor: 'pointer', fontSize: 13, width: '100%', textAlign: 'center', fontFamily: 'inherit', padding: '9px 12px', fontWeight: 600 }}
                         >
                             <i className="fa-solid fa-key" style={{ marginRight: 6 }}></i>Esqueci minha senha
                         </button>

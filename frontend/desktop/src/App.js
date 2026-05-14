@@ -4,10 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { isAuthenticated, getUser, logout } from './services/api';
 
 import LoginPage from './pages/Login';
+import DashboardPage from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
 import MaquinasMonitor from './pages/MaquinasMonitor';
 
@@ -25,6 +26,7 @@ function Layout({ children }) {
     };
 
     const links = [
+        { to: '/dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
         { to: '/kanban', icon: 'fa-columns', label: 'Kanban' },
         { to: '/maquinas', icon: 'fa-desktop', label: 'Monitoramento' },
     ];
@@ -67,13 +69,14 @@ function Layout({ children }) {
 
 export default function App() {
     return (
-        <BrowserRouter>
+        <HashRouter>
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/dashboard" element={<PrivateRoute><Layout><DashboardPage /></Layout></PrivateRoute>} />
                 <Route path="/kanban" element={<PrivateRoute><Layout><KanbanBoard /></Layout></PrivateRoute>} />
                 <Route path="/maquinas" element={<PrivateRoute><Layout><MaquinasMonitor /></Layout></PrivateRoute>} />
-                <Route path="*" element={<Navigate to="/kanban" />} />
+                <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
-        </BrowserRouter>
+        </HashRouter>
     );
 }

@@ -1,0 +1,14 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /root/ProjectMulti/Projeto---Lab.-Multiplataforma/ci-support-system/tests/selenium/.venv/bin/python3
+rootdir: /root/ProjectMulti/Projeto---Lab.-Multiplataforma/ci-support-system/tests/selenium
+[1mcollecting ... [0mcollected 10 items
+
+test_web_backend.py::test_admin_login_via_ui [32mPASSED[0m[32m                      [ 10%][0m
+test_web_backend.py::test_admin_dashboard_carrega [32mPASSED[0m[32m                 [ 20%][0m
+test_web_backend.py::test_admin_navega_inventario [32mPASSED[0m[32m                 [ 30%][0m
+test_web_backend.py::test_admin_cria_item_inventario_com_garantia [32mPASSED[0m[32m [ 40%][0m
+test_web_backend.py::test_admin_lista_usuarios [32mPASSED[0m[32m                    [ 50%][0m
+test_web_backend.py::test_admin_lista_maquinas [32mPASSED[0m[32m                    [ 60%][0m
+test_web_backend.py::test_admin_lista_chamados [32mPASSED[0m[32m                    [ 70%][0m
+test_web_backend.py::test_admin_logout [32mPASSED[0m[32m                            [ 80%][0m
+test_web_backend.py::test_usuario_login_e_cria_chamado 

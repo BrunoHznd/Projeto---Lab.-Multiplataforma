@@ -7,7 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     sysadminListarOrgs, sysadminCriarOrg, sysadminEditarOrg,
-    sysadminDeletarOrg, sysadminListarUsuariosOrg, uploadImagem, API_URL
+    sysadminDeletarOrg, sysadminListarUsuariosOrg, sysadminTrocarSenhaUsuario,
+    uploadImagem, API_URL
 } from '../services/api';
 
 export default function SysAdminPage() {
@@ -33,6 +34,38 @@ export default function SysAdminPage() {
     const [logoPreviewCriar, setLogoPreviewCriar] = useState(null);
     const [logoFileEditar, setLogoFileEditar] = useState(null);
     const [logoPreviewEditar, setLogoPreviewEditar] = useState(null);
+
+    // Modal de troca de senha de usuário (tipicamente o Admin da org)
+    const [senhaModal, setSenhaModal] = useState(null); // {usuario, org}
+    const [senhaForm, setSenhaForm] = useState({ nova_senha: '', confirmar: '' });
+    const [showSenha, setShowSenha] = useState({ nova: false, conf: false });
+
+    const abrirTrocarSenha = (usuario, org) => {
+        setSenhaModal({ usuario, org });
+        setSenhaForm({ nova_senha: '', confirmar: '' });
+        setShowSenha({ nova: false, conf: false });
+    };
+
+    const handleTrocarSenha = async (e) => {
+        e.preventDefault();
+        if (senhaForm.nova_senha.length < 6) {
+            alert('A nova senha deve ter no mínimo 6 caracteres.');
+            return;
+        }
+        if (senhaForm.nova_senha !== senhaForm.confirmar) {
+            alert('As senhas não coincidem.');
+            return;
+        }
+        setEnviando(true);
+        try {
+            await sysadminTrocarSenhaUsuario(senhaModal.usuario.id, senhaForm.nova_senha);
+            alert('Senha alterada com sucesso!');
+            setSenhaModal(null);
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Erro ao alterar senha.');
+        }
+        setEnviando(false);
+    };
 
     useEffect(() => { carregar(); }, []);
 
@@ -502,6 +535,7 @@ export default function SysAdminPage() {
                                         <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--cor-texto-sec)', fontSize: 12, borderBottom: '1px solid var(--cor-borda)' }}>Email</th>
                                         <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--cor-texto-sec)', fontSize: 12, borderBottom: '1px solid var(--cor-borda)' }}>Role</th>
                                         <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--cor-texto-sec)', fontSize: 12, borderBottom: '1px solid var(--cor-borda)' }}>Criado em</th>
+                                        <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--cor-texto-sec)', fontSize: 12, borderBottom: '1px solid var(--cor-borda)' }}>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -513,11 +547,81 @@ export default function SysAdminPage() {
                                             <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--cor-texto-sec)' }}>
                                                 {new Date(u.created_at).toLocaleDateString('pt-BR')}
                                             </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <button
+                                                    type="button"
+                                                    title="Trocar senha"
+                                                    onClick={() => abrirTrocarSenha(u, usuariosModal)}
+                                                    style={{
+                                                        background: 'rgba(255,217,61,0.12)', color: '#FFD93D',
+                                                        border: '1px solid rgba(255,217,61,0.25)', borderRadius: 6,
+                                                        padding: '5px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                                                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                    }}
+                                                >
+                                                    <i className="fa-solid fa-key"></i> Trocar senha
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Trocar senha do usuário (Admin da org) */}
+            {senhaModal && (
+                <div className="modal-overlay" onClick={() => setSenhaModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                        <div className="modal-header">
+                            <h3>
+                                <i className="fa-solid fa-key" style={{ marginRight: 8, color: '#FFD93D' }}></i>
+                                Trocar senha de {senhaModal.usuario.nome}
+                            </h3>
+                            <button className="modal-close" onClick={() => setSenhaModal(null)}>✕</button>
+                        </div>
+                        <p style={{ color: 'var(--cor-texto-sec)', fontSize: 12, margin: '0 0 14px' }}>
+                            <i className="fa-solid fa-circle-info" style={{ marginRight: 6 }}></i>
+                            Defina uma nova senha para <b>{senhaModal.usuario.email}</b> ({senhaModal.org?.nome}).
+                        </p>
+                        <form onSubmit={handleTrocarSenha} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="form-label">Nova Senha <span style={{ color: '#666', fontSize: 11 }}>(mínimo 6 caracteres)</span></label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenha.nova ? 'text' : 'password'}
+                                        value={senhaForm.nova_senha} required minLength={6}
+                                        onChange={e => setSenhaForm(p => ({ ...p, nova_senha: e.target.value }))}
+                                        style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenha(s => ({ ...s, nova: !s.nova }))}
+                                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>
+                                        <i className={`fa-solid ${showSenha.nova ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Confirmar Nova Senha</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenha.conf ? 'text' : 'password'}
+                                        value={senhaForm.confirmar} required minLength={6}
+                                        onChange={e => setSenhaForm(p => ({ ...p, confirmar: e.target.value }))}
+                                        style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenha(s => ({ ...s, conf: !s.conf }))}
+                                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>
+                                        <i className={`fa-solid ${showSenha.conf ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                                <button type="button" className="btn" style={{ background: 'var(--cor-card)', color: 'var(--cor-texto-sec)', border: '1px solid var(--cor-borda)' }} onClick={() => setSenhaModal(null)}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={enviando}>
+                                    {enviando ? 'Salvando...' : 'Alterar Senha'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

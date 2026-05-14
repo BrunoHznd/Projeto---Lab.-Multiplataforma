@@ -4,7 +4,12 @@
 
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// Em producao (Electron empacotado), usa o IP do servidor.
+// Em desenvolvimento, usa localhost ou REACT_APP_API_URL.
+const isElectronProd = typeof window !== 'undefined' && window.electronAPI?.isElectron && !window.location.href.startsWith('http://localhost');
+const API_URL = isElectronProd
+    ? 'http://67.211.211.231/api'
+    : (process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 const api = axios.create({
     baseURL: API_URL,
@@ -24,7 +29,8 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             localStorage.removeItem('tiresolve_token');
             localStorage.removeItem('tiresolve_user');
-            window.location.href = '/login';
+            // HashRouter: usa hash para navegar corretamente no Electron
+            window.location.hash = '#/login';
         }
         return Promise.reject(error);
     }

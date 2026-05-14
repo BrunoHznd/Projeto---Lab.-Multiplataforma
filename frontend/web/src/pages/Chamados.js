@@ -13,7 +13,8 @@ import {
     listarChamados, criarChamado, deletarChamado,
     listarTecnicos, atribuirTecnico, finalizarChamado,
     uploadImagem, getUser, listarMaquinas, historicoChamadosMaquina, API_URL,
-    listarMensagens, enviarMensagem, editarChamadoUsuario, atualizarChamado
+    listarMensagens, enviarMensagem, editarChamadoUsuario, atualizarChamado,
+    marcarManutencao
 } from '../services/api';
 
 const CATEGORIA_COLOR = {
@@ -44,6 +45,9 @@ export default function ChamadosPage() {
     const [editando, setEditando] = useState(false);
     const [editForm, setEditForm] = useState({ titulo: '', descricao: '' });
     const [visaoTecnico, setVisaoTecnico] = useState('meus');
+    const [manutencaoModal, setManutencaoModal] = useState(null); // chamado selecionado
+    const [motivoManutencao, setMotivoManutencao] = useState('');
+    const [salvandoManutencao, setSalvandoManutencao] = useState(false);
 
     const user = getUser();
     const role = user?.role;
@@ -736,8 +740,71 @@ export default function ChamadosPage() {
                             </div>
                         )}
 
-                        <div className="modal-actions">
+                        <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            {/* Botão Em Manutenção - dentro do detalhe */}
+                            {(role === 'ADMIN' || (role === 'TECNICO' && detalheModal.tecnico_id === user?.id)) &&
+                             detalheModal.status === 'EM_ATENDIMENTO' && detalheModal.maquina_id && (
+                                <button
+                                    className="btn"
+                                    style={{ background: 'rgba(255,217,61,0.15)', color: '#FFD93D', border: '1px solid rgba(255,217,61,0.3)' }}
+                                    onClick={() => { setManutencaoModal(detalheModal); setMotivoManutencao(''); }}
+                                >
+                                    <i className="fa-solid fa-wrench" style={{ marginRight: 6 }}></i>Em Manutenção
+                                </button>
+                            )}
                             <button className="btn btn-primary" onClick={() => { setDetalheModal(null); setEditando(false); }}>Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Em Manutenção */}
+            {manutencaoModal && (
+                <div className="modal-overlay" onClick={() => setManutencaoModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+                        <div className="modal-header">
+                            <h3 className="modal-title" style={{ color: '#FFD93D' }}>
+                                <i className="fa-solid fa-wrench" style={{ marginRight: 8 }}></i>Equipamento em Manutenção
+                            </h3>
+                            <button className="modal-close" onClick={() => setManutencaoModal(null)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ color: '#a0a0b0', marginBottom: 12, fontSize: 14 }}>
+                                Chamado <strong style={{ color: '#fff' }}>#{manutencaoModal.id} — {manutencaoModal.titulo}</strong>
+                            </p>
+                            <p style={{ color: '#a0a0b0', marginBottom: 14, fontSize: 13 }}>
+                                Informe o motivo pelo qual o equipamento está sendo colocado em manutenção:
+                            </p>
+                            <textarea
+                                className="form-input"
+                                rows={3}
+                                placeholder="Ex: Aguardando fonte para substituição, Enviado para assistência técnica..."
+                                value={motivoManutencao}
+                                onChange={e => setMotivoManutencao(e.target.value)}
+                                style={{ resize: 'vertical' }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setManutencaoModal(null)}>Cancelar</button>
+                            <button
+                                className="btn"
+                                style={{ background: '#FFD93D', color: '#1a1a2e', fontWeight: 700 }}
+                                disabled={salvandoManutencao || !motivoManutencao.trim()}
+                                onClick={async () => {
+                                    setSalvandoManutencao(true);
+                                    try {
+                                        await marcarManutencao(manutencaoModal.id, motivoManutencao.trim());
+                                        setManutencaoModal(null);
+                                        setMotivoManutencao('');
+                                        await carregar();
+                                    } catch (e) {
+                                        alert(e?.response?.data?.detail || 'Erro ao marcar manutenção');
+                                    } finally { setSalvandoManutencao(false); }
+                                }}
+                            >
+                                {salvandoManutencao ? 'Salvando...' : <><i className="fa-solid fa-wrench" style={{ marginRight: 6 }}></i>Confirmar Manutenção</>}
+                            </button>
                         </div>
                     </div>
                 </div>

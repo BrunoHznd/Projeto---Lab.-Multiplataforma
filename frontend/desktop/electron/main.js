@@ -8,6 +8,7 @@ const path = require('path');
 
 // Verifica se está em desenvolvimento
 const isDev = !app.isPackaged;
+const appVersion = app.getVersion();
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -21,8 +22,9 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js'),
+            additionalArguments: [`--app-version=${appVersion}`],
         },
-        icon: path.join(__dirname, '..', 'public', 'icon.ico'),
+        icon: path.join(__dirname, '..', 'public', 'icon.png'),
         autoHideMenuBar: false,
     });
 

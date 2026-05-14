@@ -10,7 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import User, Chamado, LogChamado, StatusChamado, Role, Notificacao, TipoNotificacao
+from app.models import (
+    User, Chamado, LogChamado, StatusChamado, Role, Notificacao, TipoNotificacao,
+    InventarioItem, EstadoInventario, Maquina
+)
 from app.schemas import (
     ChamadoCreate, ChamadoUpdate, ChamadoResponse, ChamadoEditRequest,
     AtribuirTecnicoRequest, FinalizarChamadoRequest, UserResponse,
@@ -132,6 +135,64 @@ async def finalizar(
     if current_user.organizacao_id:
         await ws_manager.broadcast(current_user.organizacao_id, "chamado_finalizado", {"id": chamado_id})
     return result
+
+
+@router.put("/{chamado_id}/manutencao")
+async def marcar_manutencao(
+    chamado_id: int,
+    dados: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Marca o equipamento vinculado ao chamado como EM_MANUTENCAO.
+    Apenas o tecnico atribuido ou ADMIN pode executar.
+    Requer campo 'motivo' no body.
+    """
+    motivo = dados.get("motivo", "").strip()
+    if not motivo:
+        raise HTTPException(status_code=400, detail="O motivo da manutencao e obrigatorio")
+
+    chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
+    if not chamado:
+        raise HTTPException(status_code=404, detail="Chamado nao encontrado")
+
+    # Permissao: ADMIN ou tecnico atribuido
+    if current_user.role == Role.TECNICO and chamado.tecnico_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Apenas o tecnico atribuido pode executar")
+    if current_user.role not in [Role.ADMIN, Role.TECNICO]:
+        raise HTTPException(status_code=403, detail="Acesso restrito")
+
+    # Busca equipamento vinculado ao chamado
+    if not chamado.maquina_id:
+        raise HTTPException(status_code=400, detail="Este chamado nao possui equipamento vinculado")
+
+    maquina = db.query(Maquina).filter(Maquina.id == chamado.maquina_id).first()
+    if not maquina:
+        raise HTTPException(status_code=400, detail="Maquina nao encontrada")
+
+    # Altera o estado do item no inventario (se vinculado)
+    item_atualizado = False
+    if maquina.inventario_item_id:
+        item = db.query(InventarioItem).filter(InventarioItem.id == maquina.inventario_item_id).first()
+        if item:
+            item.estado = EstadoInventario.EM_MANUTENCAO
+            item.motivo_manutencao = motivo
+            item_atualizado = True
+
+    # Registra log no chamado
+    log = LogChamado(
+        chamado_id=chamado_id,
+        autor_id=current_user.id,
+        mensagem=f"[Manutencao] Equipamento marcado como Em Manutencao: {motivo}"
+    )
+    db.add(log)
+
+    db.commit()
+
+    if current_user.organizacao_id:
+        await ws_manager.broadcast(current_user.organizacao_id, "chamado_atualizado", {"id": chamado_id})
+
+    return {"ok": True, "motivo": motivo, "item_atualizado": item_atualizado}
 
 
 @router.put("/{chamado_id}/editar", response_model=ChamadoResponse)

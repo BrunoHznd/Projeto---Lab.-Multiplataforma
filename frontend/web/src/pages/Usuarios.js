@@ -8,7 +8,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
     registrarUsuario, editarUsuario, alterarSenha,
     statsUsuario, excluirUsuario, getUser, getOrg, API_URL,
-    uploadImagem, atualizarLogoOrg
+    uploadImagem, atualizarLogoOrg, adminTrocarSenhaUsuario
 } from '../services/api';
 import api from '../services/api';
 
@@ -30,15 +30,55 @@ export default function UsuariosPage() {
     const [filtroRoles, setFiltroRoles] = useState(['USUARIO', 'TECNICO', 'ADMIN']);
 
     const HABILIDADES = [
-        { value: 'REDE', label: 'Rede' },
-        { value: 'HARDWARE', label: 'Hardware' },
-        { value: 'SOFTWARE', label: 'Software' },
-        { value: 'SEGURANCA', label: 'Segurança' },
-        { value: 'IMPRESSORA', label: 'Impressora' },
-        { value: 'ACESSOS', label: 'Acessos' },
-        { value: 'SERVIDOR', label: 'Servidor' },
-        { value: 'OUTROS', label: 'Outros' },
+        { value: 'REDE', label: 'Rede', icon: 'fa-network-wired', color: '#4FC3F7' },
+        { value: 'HARDWARE', label: 'Hardware', icon: 'fa-microchip', color: '#FF9F43' },
+        { value: 'SOFTWARE', label: 'Software', icon: 'fa-code', color: '#6BCB77' },
+        { value: 'SEGURANCA', label: 'Segurança', icon: 'fa-shield-halved', color: '#FF6B6B' },
+        { value: 'IMPRESSORA', label: 'Impressora', icon: 'fa-print', color: '#A78BFA' },
+        { value: 'ACESSOS', label: 'Acessos', icon: 'fa-key', color: '#FFD93D' },
+        { value: 'SERVIDOR', label: 'Servidor', icon: 'fa-server', color: '#26C6DA' },
+        { value: 'OUTROS', label: 'Outros', icon: 'fa-ellipsis', color: '#9CA3AF' },
     ];
+
+    const HABILIDADE_INFO = HABILIDADES.reduce((acc, h) => { acc[h.value] = h; return acc; }, {});
+
+    const renderHabilidadesPicker = (formObj, setFormObj) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+            {HABILIDADES.map(h => {
+                const ativo = (formObj.habilidades || []).includes(h.value);
+                return (
+                    <button type="button" key={h.value}
+                        onClick={() => toggleHab(formObj, setFormObj, h.value)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 14px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+                            border: ativo ? `1.5px solid ${h.color}` : '1.5px solid var(--cor-borda)',
+                            background: ativo
+                                ? `linear-gradient(135deg, ${h.color}33, ${h.color}1a)`
+                                : 'rgba(255,255,255,0.02)',
+                            color: ativo ? h.color : 'var(--cor-texto-sec)',
+                            cursor: 'pointer', transition: 'all .18s ease',
+                            boxShadow: ativo ? `0 2px 12px ${h.color}33` : 'none',
+                            transform: ativo ? 'translateY(-1px)' : 'none',
+                        }}
+                        onMouseEnter={e => { if (!ativo) e.currentTarget.style.borderColor = h.color + '99'; }}
+                        onMouseLeave={e => { if (!ativo) e.currentTarget.style.borderColor = 'var(--cor-borda)'; }}
+                    >
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 28, height: 28, borderRadius: 8,
+                            background: ativo ? h.color + '33' : 'rgba(255,255,255,0.04)',
+                            color: h.color, fontSize: 13,
+                        }}>
+                            <i className={`fa-solid ${h.icon}`}></i>
+                        </span>
+                        <span style={{ flex: 1, textAlign: 'left' }}>{h.label}</span>
+                        {ativo && <i className="fa-solid fa-check" style={{ fontSize: 11, color: h.color }}></i>}
+                    </button>
+                );
+            })}
+        </div>
+    );
 
     const toggleHab = (formObj, setFormObj, hab) => {
         const list = formObj.habilidades || [];
@@ -47,6 +87,11 @@ export default function UsuariosPage() {
     };
     const [senhaForm, setSenhaForm] = useState({ senha_atual: '', nova_senha: '', confirmar: '' });
     const [showSenha, setShowSenha] = useState({ atual: false, nova: false, confirmar: false });
+
+    // Admin trocando a senha de outro usuário da própria organização
+    const [senhaUserModal, setSenhaUserModal] = useState(null); // usuario alvo
+    const [senhaUserForm, setSenhaUserForm] = useState({ nova_senha: '', confirmar: '' });
+    const [showSenhaUser, setShowSenhaUser] = useState({ nova: false, conf: false });
 
     const user = getUser();
     const org = getOrg();
@@ -115,6 +160,31 @@ export default function UsuariosPage() {
             carregar();
         } catch (err) {
             alert(err.response?.data?.detail || 'Erro ao excluir usuario.');
+        }
+    };
+
+    const abrirTrocarSenhaUsuario = (u) => {
+        setSenhaUserModal(u);
+        setSenhaUserForm({ nova_senha: '', confirmar: '' });
+        setShowSenhaUser({ nova: false, conf: false });
+    };
+
+    const handleTrocarSenhaUsuario = async (e) => {
+        e.preventDefault();
+        if (senhaUserForm.nova_senha.length < 6) {
+            alert('A nova senha deve ter no mínimo 6 caracteres.');
+            return;
+        }
+        if (senhaUserForm.nova_senha !== senhaUserForm.confirmar) {
+            alert('As senhas não coincidem.');
+            return;
+        }
+        try {
+            await adminTrocarSenhaUsuario(senhaUserModal.id, senhaUserForm.nova_senha);
+            alert('Senha alterada com sucesso!');
+            setSenhaUserModal(null);
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Erro ao alterar senha.');
         }
     };
 
@@ -227,11 +297,11 @@ export default function UsuariosPage() {
                                 <td>{new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
                                 <td>
                                     {u.role === 'USUARIO' && (
-                                        <button className="btn-icon" onClick={() => abrirStats(u)} title="Ver tickets"><i className="fa-solid fa-chart-bar"></i></button>
+                                        <button className="btn-icon" onClick={() => abrirStats(u)} title="Ver tickets" style={{ color: '#4FC3F7' }}><i className="fa-solid fa-chart-bar"></i></button>
                                     )}
                                     {user?.role === 'ADMIN' && (
                                         <>
-                                            <button className="btn-icon" onClick={() => { setEditModal(u); setEditForm({ nome: u.nome, role: u.role, habilidades: u.habilidades || [], max_tickets: u.max_tickets ?? 10 }); }} title="Editar"><i className="fa-solid fa-pen"></i></button>
+                                            <button className="btn-icon" onClick={() => { setEditModal(u); setEditForm({ nome: u.nome, role: u.role, habilidades: u.habilidades || [], max_tickets: u.max_tickets ?? 10 }); }} title="Editar" style={{ color: '#6C63FF' }}><i className="fa-solid fa-pen"></i></button>
                                             {user?.id !== u.id && (
                                                 <button className="btn-icon" onClick={() => setDeleteModal(u)} title="Excluir" style={{ color: '#ef4444' }}><i className="fa-solid fa-trash"></i></button>
                                             )}
@@ -283,25 +353,11 @@ export default function UsuariosPage() {
                             )}
                             {form.role === 'TECNICO' && (
                                 <div className="form-group">
-                                    <label className="form-label">Habilidades * (selecione pelo menos 1)</label>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                        {HABILIDADES.map(h => {
-                                            const ativo = (form.habilidades || []).includes(h.value);
-                                            return (
-                                                <button type="button" key={h.value}
-                                                    onClick={() => toggleHab(form, setForm, h.value)}
-                                                    style={{
-                                                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                                                        border: ativo ? '1px solid #6C63FF' : '1px solid var(--cor-borda)',
-                                                        background: ativo ? 'rgba(108,99,255,0.18)' : 'transparent',
-                                                        color: ativo ? '#6C63FF' : 'var(--cor-texto-sec)',
-                                                        cursor: 'pointer', fontWeight: ativo ? 600 : 400
-                                                    }}>
-                                                    {ativo ? '✓ ' : ''}{h.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <label className="form-label">
+                                        <i className="fa-solid fa-screwdriver-wrench" style={{ marginRight: 6, color: '#6C63FF' }}></i>
+                                        Habilidades Técnicas <span style={{ color: '#a0a0b0', fontSize: 11, fontWeight: 400 }}>(selecione pelo menos 1)</span>
+                                    </label>
+                                    {renderHabilidadesPicker(form, setForm)}
                                 </div>
                             )}
                             <div className="modal-actions">
@@ -341,25 +397,42 @@ export default function UsuariosPage() {
                             )}
                             {editForm.role === 'TECNICO' && (
                                 <div className="form-group">
-                                    <label className="form-label">Habilidades * (selecione pelo menos 1)</label>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                        {HABILIDADES.map(h => {
-                                            const ativo = (editForm.habilidades || []).includes(h.value);
-                                            return (
-                                                <button type="button" key={h.value}
-                                                    onClick={() => toggleHab(editForm, setEditForm, h.value)}
-                                                    style={{
-                                                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                                                        border: ativo ? '1px solid #6C63FF' : '1px solid var(--cor-borda)',
-                                                        background: ativo ? 'rgba(108,99,255,0.18)' : 'transparent',
-                                                        color: ativo ? '#6C63FF' : 'var(--cor-texto-sec)',
-                                                        cursor: 'pointer', fontWeight: ativo ? 600 : 400
-                                                    }}>
-                                                    {ativo ? '✓ ' : ''}{h.label}
-                                                </button>
-                                            );
-                                        })}
+                                    <label className="form-label">
+                                        <i className="fa-solid fa-screwdriver-wrench" style={{ marginRight: 6, color: '#6C63FF' }}></i>
+                                        Habilidades Técnicas <span style={{ color: '#a0a0b0', fontSize: 11, fontWeight: 400 }}>(selecione pelo menos 1)</span>
+                                    </label>
+                                    {renderHabilidadesPicker(editForm, setEditForm)}
+                                </div>
+                            )}
+                            {user?.id !== editModal.id && (
+                                <div style={{
+                                    marginTop: 8, padding: '12px 14px', borderRadius: 10,
+                                    background: 'rgba(255,217,61,0.06)', border: '1px solid rgba(255,217,61,0.18)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: 32, height: 32, borderRadius: 8,
+                                            background: 'rgba(255,217,61,0.15)', color: '#FFD93D', fontSize: 14,
+                                        }}>
+                                            <i className="fa-solid fa-key"></i>
+                                        </span>
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Senha de acesso</div>
+                                            <div style={{ fontSize: 11, color: '#a0a0b0' }}>Defina uma nova senha para este usuário</div>
+                                        </div>
                                     </div>
+                                    <button type="button"
+                                        onClick={() => { const u = editModal; setEditModal(null); abrirTrocarSenhaUsuario(u); }}
+                                        style={{
+                                            background: 'rgba(255,217,61,0.15)', color: '#FFD93D',
+                                            border: '1px solid rgba(255,217,61,0.3)', borderRadius: 8,
+                                            padding: '8px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                                            whiteSpace: 'nowrap',
+                                        }}>
+                                        <i className="fa-solid fa-key" style={{ marginRight: 6 }}></i>Trocar Senha
+                                    </button>
                                 </div>
                             )}
                             <div className="modal-actions">
@@ -518,6 +591,54 @@ export default function UsuariosPage() {
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-danger" onClick={() => setSenhaModal(false)}>Cancelar</button>
                                 <button type="submit" className="btn btn-primary">Alterar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Admin troca a senha de outro usuario da org */}
+            {senhaUserModal && (
+                <div className="modal-overlay" onClick={() => setSenhaUserModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                        <h2 className="modal-title">
+                            <i className="fa-solid fa-key" style={{ color: '#FFD93D' }}></i>
+                            Trocar senha de {senhaUserModal.nome}
+                        </h2>
+                        <p style={{ color: '#a0a0b0', fontSize: 12, margin: '0 0 14px' }}>
+                            <i className="fa-solid fa-circle-info" style={{ marginRight: 6 }}></i>
+                            Defina uma nova senha para <b style={{ color: '#fff' }}>{senhaUserModal.email}</b>.
+                        </p>
+                        <form onSubmit={handleTrocarSenhaUsuario}>
+                            <div className="form-group">
+                                <label className="form-label">Nova Senha <span style={{ color: '#666', fontSize: 11 }}>(minimo 6 caracteres)</span></label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenhaUser.nova ? 'text' : 'password'}
+                                        value={senhaUserForm.nova_senha} required minLength={6}
+                                        onChange={e => setSenhaUserForm(p => ({ ...p, nova_senha: e.target.value }))}
+                                        style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenhaUser(s => ({ ...s, nova: !s.nova }))}
+                                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>
+                                        <i className={`fa-solid ${showSenhaUser.nova ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Confirmar Nova Senha</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showSenhaUser.conf ? 'text' : 'password'}
+                                        value={senhaUserForm.confirmar} required minLength={6}
+                                        onChange={e => setSenhaUserForm(p => ({ ...p, confirmar: e.target.value }))}
+                                        style={{ paddingRight: 40 }} />
+                                    <button type="button" onClick={() => setShowSenhaUser(s => ({ ...s, conf: !s.conf }))}
+                                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#a0a0b0' }}>
+                                        <i className={`fa-solid ${showSenhaUser.conf ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="modal-actions">
+                                <button type="button" className="btn btn-danger" onClick={() => setSenhaUserModal(null)}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary">Alterar Senha</button>
                             </div>
                         </form>
                     </div>

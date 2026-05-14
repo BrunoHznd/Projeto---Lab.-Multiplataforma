@@ -5,11 +5,12 @@ Define os schemas de request/response para a API.
 
 from datetime import datetime
 from typing import Optional, Any, List
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.models import (
     Role, StatusChamado, Prioridade, StatusMaquina,
-    TipoNotificacao, TipoMaquina, Categoria, Habilidade
+    TipoNotificacao, TipoMaquina, Categoria, Habilidade,
+    EstadoInventario
 )
 
 
@@ -292,18 +293,37 @@ class MaquinaUpdate(BaseModel):
 
 # ==================== INVENTARIO ====================
 
+class CategoriaInventarioCreate(BaseModel):
+    """Schema para criar categoria de inventario."""
+    nome: str
+
+
+class CategoriaInventarioResponse(BaseModel):
+    """Schema de resposta de categoria de inventario."""
+    id: int
+    nome: str
+    organizacao_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class InventarioItemCreate(BaseModel):
     """Schema para criar item de inventario."""
     nome: str
     descricao: Optional[str] = None
     foto_url: Optional[str] = None
-    garantia: bool = False
+    data_compra: Optional[datetime] = None
     garantia_ate: Optional[datetime] = None
     campos_extras: Optional[dict[str, Any]] = None
     # Quando True, gera agent_token e cria placeholder em Infraestrutura.
     incluir_em_infraestrutura: bool = False
     # Tipo do agent (HARDWARE ou REDE). Obrigatorio se incluir_em_infraestrutura=True.
     tipo_dispositivo: Optional[TipoMaquina] = None
+    # Novos campos
+    categoria_inventario_id: Optional[int] = None
+    marca: Optional[str] = None
+    estado: EstadoInventario = EstadoInventario.ATIVO
 
 
 class InventarioItemUpdate(BaseModel):
@@ -311,11 +331,16 @@ class InventarioItemUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
     foto_url: Optional[str] = None
-    garantia: Optional[bool] = None
+    data_compra: Optional[datetime] = None
     garantia_ate: Optional[datetime] = None
     campos_extras: Optional[dict[str, Any]] = None
     incluir_em_infraestrutura: Optional[bool] = None
     tipo_dispositivo: Optional[TipoMaquina] = None
+    # Novos campos
+    categoria_inventario_id: Optional[int] = None
+    marca: Optional[str] = None
+    estado: Optional[EstadoInventario] = None
+    motivo_manutencao: Optional[str] = None
 
 
 class InventarioItemResponse(BaseModel):
@@ -325,16 +350,37 @@ class InventarioItemResponse(BaseModel):
     nome: str
     descricao: Optional[str] = None
     foto_url: Optional[str] = None
-    garantia: bool
+    data_compra: Optional[datetime] = None
     garantia_ate: Optional[datetime] = None
+    em_garantia: bool = False
     campos_extras: Optional[dict[str, Any]] = None
     agent_token: Optional[str] = None
     tipo_dispositivo: Optional[TipoMaquina] = None
+    # Novos campos
+    categoria_inventario_id: Optional[int] = None
+    categoria_nome: Optional[str] = None
+    marca: Optional[str] = None
+    estado: EstadoInventario = EstadoInventario.ATIVO
+    motivo_manutencao: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode="after")
+    def _calc_em_garantia(self):
+        # Computa em_garantia toda vez que o modelo eh validado/serializado.
+        if self.garantia_ate is not None:
+            try:
+                self.em_garantia = self.garantia_ate >= datetime.now()
+            except TypeError:
+                # garantia_ate aware vs now naive (ou vice-versa) -> normaliza
+                ga = self.garantia_ate.replace(tzinfo=None)
+                self.em_garantia = ga >= datetime.now()
+        else:
+            self.em_garantia = False
+        return self
 
 
 # ==================== NOTIFICACOES ====================

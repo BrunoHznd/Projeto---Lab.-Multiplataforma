@@ -72,6 +72,17 @@ def migrate():
     """)
     print("  [OK] tabela grupos_maquinas criada/verificada")
 
+    # ===== Tabela categorias_inventario =====
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS categorias_inventario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome VARCHAR(255) NOT NULL,
+            organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    print("  [OK] tabela categorias_inventario criada/verificada")
+
     # ===== Colunas novas em tabelas existentes =====
     migrations = [
         ("users", "organizacao_id", "INTEGER REFERENCES organizacoes(id)"),
@@ -95,7 +106,13 @@ def migrate():
         # Vinculo Inventario <-> Infraestrutura
         ("inventario", "agent_token", "VARCHAR(64)"),
         ("inventario", "tipo_dispositivo", "VARCHAR(20)"),
+        ("inventario", "data_compra", "DATETIME"),
         ("maquinas", "inventario_item_id", "INTEGER REFERENCES inventario(id)"),
+        # Novos campos de Inventario: Categoria, Marca, Estado
+        ("inventario", "categoria_inventario_id", "INTEGER REFERENCES categorias_inventario(id)"),
+        ("inventario", "marca", "VARCHAR(255)"),
+        ("inventario", "estado", "VARCHAR(20) DEFAULT 'ATIVO'"),
+        ("inventario", "motivo_manutencao", "TEXT"),
     ]
 
     for table, column, col_type in migrations:

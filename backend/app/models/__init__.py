@@ -1,6 +1,6 @@
 """
 tiResolve - Modelos do Banco de Dados
-Define as entidades: Organizacao, User, Chamado, LogChamado, Maquina, InventarioItem.
+Define as entidades: Organizacao, User, Chamado, LogChamado, Maquina, InventarioItem, CategoriaInventario.
 """
 
 import enum
@@ -54,6 +54,13 @@ class TipoMaquina(str, enum.Enum):
     REDE = "REDE"
 
 
+class EstadoInventario(str, enum.Enum):
+    """Estado de um item de inventario."""
+    ATIVO = "ATIVO"
+    INATIVO = "INATIVO"
+    EM_MANUTENCAO = "EM_MANUTENCAO"
+
+
 class Categoria(str, enum.Enum):
     """Categoria do chamado, definida pelo classificador de ML."""
     HARDWARE = "HARDWARE"
@@ -98,6 +105,7 @@ class Organizacao(Base):
     maquinas = relationship("Maquina", back_populates="organizacao")
     inventario = relationship("InventarioItem", back_populates="organizacao")
     grupos = relationship("GrupoMaquina", back_populates="organizacao")
+    categorias_inventario = relationship("CategoriaInventario", back_populates="organizacao")
 
 
 class GrupoMaquina(Base):
@@ -246,6 +254,20 @@ class Maquina(Base):
     inventario_item = relationship("InventarioItem", back_populates="maquina", foreign_keys=[inventario_item_id])
 
 
+class CategoriaInventario(Base):
+    """Modelo de categoria de inventario (cadastrada dinamicamente por organizacao)."""
+    __tablename__ = "categorias_inventario"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nome = Column(String(255), nullable=False)
+    organizacao_id = Column(Integer, ForeignKey("organizacoes.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relacionamentos
+    organizacao = relationship("Organizacao", back_populates="categorias_inventario")
+    itens = relationship("InventarioItem", back_populates="categoria_rel")
+
+
 class InventarioItem(Base):
     """Modelo de item de inventario."""
     __tablename__ = "inventario"
@@ -256,6 +278,7 @@ class InventarioItem(Base):
     descricao = Column(Text, nullable=True)
     foto_url = Column(String(500), nullable=True)
     garantia = Column(Boolean, default=False)
+    data_compra = Column(DateTime, nullable=True)
     garantia_ate = Column(DateTime, nullable=True)
     campos_extras = Column(JSON, nullable=True, default=dict)
     # Token unico para vincular o agent baixado a este item de inventario
@@ -263,11 +286,17 @@ class InventarioItem(Base):
     # Tipo do agent que sera baixado (HARDWARE ou REDE). Quando preenchido,
     # indica que o item esta marcado para Inclusao em Infraestrutura.
     tipo_dispositivo = Column(SAEnum(TipoMaquina), nullable=True)
+    # Novos campos: Categoria, Marca, Estado
+    categoria_inventario_id = Column(Integer, ForeignKey("categorias_inventario.id"), nullable=True)
+    marca = Column(String(255), nullable=True)
+    estado = Column(SAEnum(EstadoInventario), default=EstadoInventario.ATIVO, nullable=False)
+    motivo_manutencao = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # Relacionamentos
     organizacao = relationship("Organizacao", back_populates="inventario")
+    categoria_rel = relationship("CategoriaInventario", back_populates="itens")
     maquina = relationship("Maquina", back_populates="inventario_item", uselist=False, foreign_keys="Maquina.inventario_item_id")
 
 

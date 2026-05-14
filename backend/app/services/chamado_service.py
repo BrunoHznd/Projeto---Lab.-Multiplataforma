@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models import (
     Chamado, LogChamado, StatusChamado, User, Role,
-    Notificacao, TipoNotificacao, Categoria, Prioridade
+    Notificacao, TipoNotificacao, Categoria, Prioridade,
+    InventarioItem, EstadoInventario, Maquina
 )
 from app.services.push_service import enviar_push_para_usuario
 from app.services.ml_service import classificar
@@ -227,6 +228,24 @@ def finalizar_chamado(
         corpo=corpo_notif
     )
     db.add(notif)
+
+    # Auto-retorno: se o equipamento vinculado estiver EM_MANUTENCAO, volta para ATIVO
+    if chamado.maquina_id:
+        maquina = db.query(Maquina).filter(Maquina.id == chamado.maquina_id).first()
+        if maquina and maquina.inventario_item_id:
+            inv_item = db.query(InventarioItem).filter(
+                InventarioItem.id == maquina.inventario_item_id
+            ).first()
+            if inv_item and inv_item.estado == EstadoInventario.EM_MANUTENCAO:
+                inv_item.estado = EstadoInventario.ATIVO
+                inv_item.motivo_manutencao = None
+                # Log adicional
+                log_manut = LogChamado(
+                    chamado_id=chamado_id,
+                    autor_id=tecnico_user.id,
+                    mensagem="[Manutencao] Equipamento retornou ao estado ATIVO automaticamente"
+                )
+                db.add(log_manut)
 
     db.commit()
     db.refresh(chamado)
